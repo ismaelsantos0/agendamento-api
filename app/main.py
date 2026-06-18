@@ -73,3 +73,12 @@ app.include_router(appointments.router)
 @app.get("/health", tags=["Sistema"])
 async def health_check():
     return {"status": "ok", "service": "agendamentos-api"}
+
+@app.get("/reset-db-danger", tags=["Sistema"])
+async def reset_db():
+    log.warning("ZERANDO O BANCO DE DADOS...")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    await seed_master()
+    return {"status": "Banco recriado com sucesso! Volte ao painel e crie o profissional novamente."}
