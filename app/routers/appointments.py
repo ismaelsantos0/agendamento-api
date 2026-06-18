@@ -70,14 +70,15 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
         agora = datetime.now(timezone.utc)
         
         data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
-        texto_msg = (
-            f"Olá {appt.customer_name}! Você tem um agendamento com {prof.name} "
-            f"para {data_formatada}.\n\n"
-            "Responda *1* para CONFIRMAR ou *2* para CANCELAR."
-        )
+        # Lógica de Mensagens Personalizadas
+        msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
         
-        # Mensagem imediata de "Agendamento Criado"
-        msg_criado = f"Olá {appt.customer_name}! 📅 Seu agendamento com {prof.name} para {data_formatada} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
+        msg_conf_template = settings.msg_confirmation if settings and settings.msg_confirmation else "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.\n\nResponda *1* para CONFIRMAR ou *2* para CANCELAR."
+        
+        # Faz o replace dinâmico
+        msg_criado = msg_criado_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
+        texto_msg = msg_conf_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
+
         scheduler.add_job(
             enviar_mensagem,
             trigger='date',

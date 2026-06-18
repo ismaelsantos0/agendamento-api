@@ -87,6 +87,8 @@ class AppointmentStatusUpdate(BaseModel):
 # ─── Settings ───
 class ClinicSettingsUpdate(BaseModel):
     appointment_duration_minutes: int
+    msg_created: Optional[str] = None
+    msg_confirmation: Optional[str] = None
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str

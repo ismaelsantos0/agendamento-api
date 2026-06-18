@@ -52,6 +52,17 @@ async def lifespan(app: FastAPI):
     log.info("[DB] Sincronizando tabelas no PostgreSQL...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Migração implícita (ALTER TABLE)
+        try:
+            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_created VARCHAR"))
+        except Exception:
+            pass # Coluna já existe
+            
+        try:
+            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_confirmation VARCHAR"))
+        except Exception:
+            pass # Coluna já existe
 
     await seed_master()
     
@@ -84,8 +95,9 @@ app.include_router(blockouts.router)
 app.include_router(appointments.router)
 app.include_router(settings_router.router)
 
-from app.routers import webhooks
+from app.routers import webhooks, whatsapp_management
 app.include_router(webhooks.router)
+app.include_router(whatsapp_management.router)
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():

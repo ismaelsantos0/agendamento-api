@@ -43,6 +43,8 @@ class ClinicSettings(Base):
 
     id = Column(String, primary_key=True, default="default")
     appointment_duration_minutes = Column(Integer, default=60, nullable=False)
+    msg_created = Column(String, nullable=True)
+    msg_confirmation = Column(String, nullable=True)
 
 
 class Blockout(Base):
