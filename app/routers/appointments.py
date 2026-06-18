@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 import uuid
 
 from app.database import AsyncSessionLocal
@@ -67,9 +67,11 @@ async def list_appointments(date: str = None, professional_id: uuid.UUID = None,
         query = query.where(Appointment.professional_id == professional_id)
         
     if date:
+        start_of_day = datetime.strptime(f"{date}T00:00:00", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        end_of_day = datetime.strptime(f"{date}T23:59:59", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
         query = query.where(
-            Appointment.start_time >= f"{date}T00:00:00Z",
-            Appointment.start_time <= f"{date}T23:59:59Z"
+            Appointment.start_time >= start_of_day,
+            Appointment.start_time <= end_of_day
         )
     
     result = await db.execute(query)
