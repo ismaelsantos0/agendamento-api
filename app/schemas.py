@@ -9,6 +9,20 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+# ─── Users ───
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: Optional[str] = "standard"
+
+class UserOut(BaseModel):
+    id: UUID
+    username: str
+    role: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 # ─── Professional ───
 class ProfessionalCreate(BaseModel):
