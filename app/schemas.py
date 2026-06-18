@@ -93,3 +93,7 @@ class ClinicSettingsUpdate(BaseModel):
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str
     model_config = ConfigDict(from_attributes=True)
+
+class TestConfirmationMessagePayload(BaseModel):
+    telefone: str
+    msg_confirmation: Optional[str] = None
