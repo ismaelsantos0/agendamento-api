@@ -19,13 +19,13 @@ async def seed_master() -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.username == settings.admin_username))
         user = result.scalar_one_or_none()
-        from app.security import get_password_hash
+        from app.security import hash_password
         
         if not user:
             log.info(f"[DB] Criando usuário admin: {settings.admin_username}")
             new_user = User(
                 username=settings.admin_username,
-                password_hash=get_password_hash(settings.admin_password),
+                password_hash=hash_password(settings.admin_password),
                 role="master"
             )
             db.add(new_user)
@@ -33,7 +33,7 @@ async def seed_master() -> None:
         else:
             # Atualiza a senha caso ela tenha mudado no código
             log.info(f"[DB] Atualizando senha do admin: {settings.admin_username}")
-            user.password_hash = get_password_hash(settings.admin_password)
+            user.password_hash = hash_password(settings.admin_password)
             await db.commit()
 
 @asynccontextmanager

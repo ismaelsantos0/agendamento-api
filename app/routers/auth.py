@@ -36,10 +36,5 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    from datetime import timedelta
-    from app.config import get_settings
-    settings = get_settings()
-    
-    expires = timedelta(minutes=settings.access_token_expire_minutes)
-    token = create_access_token({"sub": user.username, "role": user.role}, expires_delta=expires)
+    token = create_access_token({"sub": user.username, "role": user.role})
     return Token(access_token=token, token_type="bearer")
