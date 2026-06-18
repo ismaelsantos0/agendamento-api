@@ -60,19 +60,26 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     return response_data
 
 @router.get("", response_model=List[AppointmentResponse])
-async def list_appointments(date: str = None, professional_id: uuid.UUID = None, db: AsyncSession = Depends(get_db)):
+async def list_appointments(
+    start_date: str = None, 
+    end_date: str = None, 
+    professional_id: uuid.UUID = None, 
+    db: AsyncSession = Depends(get_db)
+):
     query = select(Appointment, Professional.name.label("professional_name")).join(Professional)
     
     if professional_id:
         query = query.where(Appointment.professional_id == professional_id)
         
-    if date:
-        start_of_day = datetime.strptime(f"{date}T00:00:00", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
-        end_of_day = datetime.strptime(f"{date}T23:59:59", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
-        query = query.where(
-            Appointment.start_time >= start_of_day,
-            Appointment.start_time <= end_of_day
-        )
+    if start_date:
+        start_of_period = datetime.strptime(f"{start_date}T00:00:00", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        query = query.where(Appointment.start_time >= start_of_period)
+        
+    if end_date:
+        end_of_period = datetime.strptime(f"{end_date}T23:59:59", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        query = query.where(Appointment.start_time <= end_of_period)
+        
+    query = query.order_by(Appointment.start_time.asc())
     
     result = await db.execute(query)
     
