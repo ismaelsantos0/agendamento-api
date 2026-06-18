@@ -99,6 +99,11 @@ async def update_status(
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
         
     appt.status = status_update.status
+    if status_update.notes is not None:
+        if appt.notes:
+            appt.notes = appt.notes + "\n[Cancelamento]: " + status_update.notes
+        else:
+            appt.notes = "[Cancelamento]: " + status_update.notes
     await db.commit()
     await db.refresh(appt)
     return appt

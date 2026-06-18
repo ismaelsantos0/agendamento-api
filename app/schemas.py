@@ -81,6 +81,7 @@ class AppointmentResponse(BaseModel):
 
 class AppointmentStatusUpdate(BaseModel):
     status: str
+    notes: Optional[str] = None
 
 
 # ─── Settings ───
