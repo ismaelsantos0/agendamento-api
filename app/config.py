@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
     admin_username: str = "master"
-    admin_password: str = "change-me-immediately"
+    admin_password: str = "admin123"
     cors_origins: list[str] = ["*"]
 
     model_config = SettingsConfigDict(

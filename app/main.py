@@ -17,17 +17,24 @@ settings = get_settings()
 
 async def seed_master() -> None:
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User).where(User.role == "master").limit(1))
-        if result.scalar_one_or_none() is None:
-            master = User(
+        result = await db.execute(select(User).where(User.username == settings.admin_username))
+        user = result.scalar_one_or_none()
+        from app.security import get_password_hash
+        
+        if not user:
+            log.info(f"[DB] Criando usuário admin: {settings.admin_username}")
+            new_user = User(
                 username=settings.admin_username,
-                password_hash=hash_password(settings.admin_password),
-                role="master",
-                is_active=True,
+                password_hash=get_password_hash(settings.admin_password),
+                role="master"
             )
-            db.add(master)
+            db.add(new_user)
             await db.commit()
-            log.info(f"[Seed] Conta master criada: '{settings.admin_username}'")
+        else:
+            # Atualiza a senha caso ela tenha mudado no código
+            log.info(f"[DB] Atualizando senha do admin: {settings.admin_username}")
+            user.password_hash = get_password_hash(settings.admin_password)
+            await db.commit()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
