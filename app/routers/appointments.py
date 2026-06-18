@@ -80,6 +80,8 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
         msg_criado = f"Olá {appt.customer_name}! 📅 Seu agendamento com {prof.name} para {data_formatada} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
         scheduler.add_job(
             enviar_mensagem,
+            trigger='date',
+            run_date=agora,
             kwargs={"telefone": appt.customer_phone, "texto": msg_criado}
         )
 
