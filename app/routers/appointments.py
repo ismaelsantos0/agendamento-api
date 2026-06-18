@@ -64,12 +64,16 @@ async def list_appointments(
     start_date: str = None, 
     end_date: str = None, 
     professional_id: uuid.UUID = None, 
+    status: str = None,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(Appointment, Professional.name.label("professional_name")).join(Professional)
     
     if professional_id:
         query = query.where(Appointment.professional_id == professional_id)
+        
+    if status:
+        query = query.where(Appointment.status == status)
         
     if start_date:
         start_of_period = datetime.strptime(f"{start_date}T00:00:00", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
