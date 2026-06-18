@@ -8,7 +8,7 @@ from sqlalchemy import select, text
 from app.config import get_settings
 from app.database import AsyncSessionLocal, engine, Base
 from app.models import User
-from app.routers import auth, appointments, users, professionals, availability
+from app.routers import auth, appointments, users, professionals, availability, settings, blockouts
 from app.security import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
