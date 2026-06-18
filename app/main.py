@@ -8,7 +8,7 @@ from sqlalchemy import select, text
 from app.config import get_settings
 from app.database import AsyncSessionLocal, engine, Base
 from app.models import User
-from app.routers import auth, appointments, users, professionals, availability, settings, blockouts
+from app.routers import auth, appointments, users, professionals, availability, settings as settings_router, blockouts
 from app.security import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
@@ -70,7 +70,7 @@ app.include_router(professionals.router)
 app.include_router(availability.router)
 app.include_router(blockouts.router)
 app.include_router(appointments.router)
-app.include_router(settings.router)
+app.include_router(settings_router.router)
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():
