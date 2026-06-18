@@ -76,13 +76,17 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
             "Responda *1* para CONFIRMAR ou *2* para CANCELAR."
         )
         
-        # Se faltar menos de 2 horas pro agendamento, manda imediatamente
-        if hora_do_aviso <= agora:
-            scheduler.add_job(
-                enviar_mensagem,
-                kwargs={"telefone": appt.customer_phone, "texto": texto_msg}
-            )
-        else:
+        # Mensagem imediata de "Agendamento Criado"
+        msg_criado = f"Olá {appt.customer_name}! 📅 Seu agendamento com {prof.name} para {data_formatada} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
+        scheduler.add_job(
+            enviar_mensagem,
+            kwargs={"telefone": appt.customer_phone, "texto": msg_criado}
+        )
+
+        # Se faltar menos de 2 horas pro agendamento, NÃO precisamos agendar a confirmação para o passado,
+        # enviaremos apenas a mensagem de "criado" que já serve como aviso.
+        # Se for no futuro, agendamos a confirmação para 2 horas antes.
+        if hora_do_aviso > agora:
             scheduler.add_job(
                 enviar_mensagem,
                 trigger='date',
