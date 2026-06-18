@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     admin_username: str = "master"
     admin_password: str = "admin123"
     cors_origins: list[str] = ["*"]
+    
+    # Evolution API (WhatsApp)
+    evolution_api_url: str = ""
+    evolution_api_key: str = ""
+    evolution_instance: str = ""
+    admin_phone: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

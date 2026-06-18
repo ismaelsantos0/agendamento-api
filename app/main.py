@@ -47,12 +47,17 @@ async def lifespan(app: FastAPI):
         log.error(f"[DB] Falha ao conectar: {exc}")
         raise
 
+    from app.scheduler import start_scheduler, shutdown_scheduler
+    
     log.info("[DB] Sincronizando tabelas no PostgreSQL...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     await seed_master()
+    
+    start_scheduler()
     yield
+    shutdown_scheduler()
 
 app = FastAPI(
     title="Agendamentos API",
@@ -78,6 +83,9 @@ app.include_router(availability.router)
 app.include_router(blockouts.router)
 app.include_router(appointments.router)
 app.include_router(settings_router.router)
+
+from app.routers import webhooks
+app.include_router(webhooks.router)
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():

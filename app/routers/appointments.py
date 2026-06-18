@@ -57,6 +57,39 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     # Preenche o nome do prof pra retornar bonito
     response_data = AppointmentResponse.model_validate(new_appt)
     response_data.professional_name = prof.name
+    
+    # ─── AGENDAMENTO DE WHATSAPP ───────────────────────────────────────────────
+    if appt.customer_phone:
+        from app.scheduler import scheduler
+        from app.services.whatsapp import enviar_mensagem
+        import pytz
+        from datetime import timezone
+        
+        # O start_time está em UTC
+        hora_do_aviso = appt.start_time - timedelta(hours=2)
+        agora = datetime.now(timezone.utc)
+        
+        data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+        texto_msg = (
+            f"Olá {appt.customer_name}! Você tem um agendamento com {prof.name} "
+            f"para {data_formatada}.\n\n"
+            "Responda *1* para CONFIRMAR ou *2* para CANCELAR."
+        )
+        
+        # Se faltar menos de 2 horas pro agendamento, manda imediatamente
+        if hora_do_aviso <= agora:
+            scheduler.add_job(
+                enviar_mensagem,
+                kwargs={"telefone": appt.customer_phone, "texto": texto_msg}
+            )
+        else:
+            scheduler.add_job(
+                enviar_mensagem,
+                trigger='date',
+                run_date=hora_do_aviso,
+                kwargs={"telefone": appt.customer_phone, "texto": texto_msg}
+            )
+            
     return response_data
 
 @router.get("", response_model=List[AppointmentResponse])
