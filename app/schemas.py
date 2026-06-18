@@ -46,6 +46,18 @@ class AvailabilityRuleResponse(AvailabilityRuleCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ─── Blockouts ───
+class BlockoutCreate(BaseModel):
+    professional_id: UUID
+    date: date
+    start_time: time
+    end_time: time
+
+class BlockoutResponse(BlockoutCreate):
+    id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ─── Appointment ───
 class AppointmentCreate(BaseModel):
     professional_id: UUID
@@ -69,3 +81,12 @@ class AppointmentResponse(BaseModel):
 
 class AppointmentStatusUpdate(BaseModel):
     status: str
+
+
+# ─── Settings ───
+class ClinicSettingsUpdate(BaseModel):
+    appointment_duration_minutes: int
+
+class ClinicSettingsResponse(ClinicSettingsUpdate):
+    id: str
+    model_config = ConfigDict(from_attributes=True)

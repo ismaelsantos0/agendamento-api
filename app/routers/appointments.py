@@ -6,7 +6,7 @@ from datetime import timedelta
 import uuid
 
 from app.database import AsyncSessionLocal
-from app.models import Appointment, Professional
+from app.models import Appointment, Professional, ClinicSettings
 from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate
 from app.dependencies import get_current_user
 
@@ -23,8 +23,13 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     if not prof or not prof.is_active:
         raise HTTPException(status_code=404, detail="Profissional não encontrado")
 
-    # Duração fixa de 1 hora
-    end_time = appt.start_time + timedelta(hours=1)
+    # Lê duração das configurações
+    settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
+    settings = settings_res.scalar_one_or_none()
+    duration_minutes = settings.appointment_duration_minutes if settings else 60
+
+    # Duração dinâmica
+    end_time = appt.start_time + timedelta(minutes=duration_minutes)
 
     # Verifica conflitos DESTE profissional
     conflict_query = select(Appointment).where(

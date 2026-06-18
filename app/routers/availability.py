@@ -34,3 +34,19 @@ async def create_rule(
     await db.commit()
     await db.refresh(new_rule)
     return new_rule
+
+@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_availability_rule(
+    rule_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Apenas admin pode gerenciar horários")
+        
+    rule = await db.get(AvailabilityRule, rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail="Regra não encontrada")
+        
+    await db.delete(rule)
+    await db.commit()

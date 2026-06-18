@@ -68,7 +68,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(professionals.router)
 app.include_router(availability.router)
+app.include_router(blockouts.router)
 app.include_router(appointments.router)
+app.include_router(settings.router)
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():

@@ -38,6 +38,23 @@ class AvailabilityRule(Base):
 
     professional = relationship("Professional", back_populates="availability_rules")
 
+class ClinicSettings(Base):
+    __tablename__ = "clinic_settings"
+
+    id = Column(String, primary_key=True, default="default")
+    appointment_duration_minutes = Column(Integer, default=60, nullable=False)
+
+
+class Blockout(Base):
+    __tablename__ = "blockouts"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("professionals.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+
+    professional = relationship("Professional")
 
 class Appointment(Base):
     __tablename__ = "appointments"
