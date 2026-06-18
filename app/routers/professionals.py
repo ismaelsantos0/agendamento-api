@@ -14,12 +14,12 @@ async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
-@router.get("/", response_model=List[ProfessionalResponse])
+@router.get("", response_model=List[ProfessionalResponse])
 async def list_professionals(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Professional).where(Professional.is_active == True))
     return result.scalars().all()
 
-@router.post("/", response_model=ProfessionalResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProfessionalResponse, status_code=status.HTTP_201_CREATED)
 async def create_professional(
     prof: ProfessionalCreate,
     db: AsyncSession = Depends(get_db),

@@ -11,7 +11,7 @@ from app.schemas import AvailabilityRuleCreate, AvailabilityRuleResponse
 
 router = APIRouter(prefix="/availability", tags=["Disponibilidade"])
 
-@router.get("/", response_model=List[AvailabilityRuleResponse])
+@router.get("", response_model=List[AvailabilityRuleResponse])
 async def list_rules(professional_id: uuid.UUID = None, db: AsyncSession = Depends(get_db)):
     query = select(AvailabilityRule)
     if professional_id:
@@ -20,7 +20,7 @@ async def list_rules(professional_id: uuid.UUID = None, db: AsyncSession = Depen
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.post("/", response_model=AvailabilityRuleResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AvailabilityRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_rule(
     rule: AvailabilityRuleCreate,
     db: AsyncSession = Depends(get_db),

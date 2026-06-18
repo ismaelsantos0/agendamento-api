@@ -16,7 +16,7 @@ async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
-@router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends(get_db)):
     # Verifica se profissional existe
     prof = await db.get(Professional, appt.professional_id)
@@ -54,7 +54,7 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     response_data.professional_name = prof.name
     return response_data
 
-@router.get("/", response_model=List[AppointmentResponse])
+@router.get("", response_model=List[AppointmentResponse])
 async def list_appointments(date: str = None, professional_id: uuid.UUID = None, db: AsyncSession = Depends(get_db)):
     query = select(Appointment, Professional.name.label("professional_name")).join(Professional)
     
