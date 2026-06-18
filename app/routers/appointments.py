@@ -157,3 +157,21 @@ async def update_status(
     await db.commit()
     await db.refresh(appt)
     return appt
+
+@router.get("/test-whatsapp/{telefone}")
+async def test_whatsapp(telefone: str):
+    from app.services.whatsapp import enviar_mensagem
+    from app.config import get_settings
+    settings = get_settings()
+    
+    # Tentamos enviar
+    sucesso = await enviar_mensagem(telefone, "Teste de disparo direto do Backend!")
+    
+    return {
+        "sucesso": sucesso,
+        "config_url_existe": bool(settings.evolution_api_url),
+        "config_key_existe": bool(settings.evolution_api_key),
+        "config_instance_existe": bool(settings.evolution_instance),
+        "evolution_url_configurada": settings.evolution_api_url,
+        "evolution_instance_configurada": settings.evolution_instance
+    }
