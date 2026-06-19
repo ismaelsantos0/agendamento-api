@@ -44,7 +44,39 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
         texto_msg = texto_msg.strip()
         
         remote_jid = key_data.get("remoteJid", "")
-        telefone = normalize_phone(remote_jid.split("@")[0])
+        sender = payload.get("sender", "")
+        
+        telefone_bruto = None
+        if sender and "@s.whatsapp.net" in sender:
+            telefone_bruto = sender.split("@")[0]
+        elif "@s.whatsapp.net" in remote_jid:
+            telefone_bruto = remote_jid.split("@")[0]
+            
+        # Se for um LID, tenta resolver o JID real / número via Evolution API
+        if (not telefone_bruto or "@lid" in remote_jid) and settings.evolution_api_url and settings.evolution_api_key:
+            try:
+                import httpx
+                url = f"{settings.evolution_api_url.rstrip('/')}/contact/profile/{remote_jid}"
+                headers = {"apikey": settings.evolution_api_key}
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(url, headers=headers)
+                    if response.status_code == 200:
+                        data_profile = response.json()
+                        real_phone = (
+                            data_profile.get("number") or
+                            data_profile.get("phoneNumber") or
+                            (data_profile.get("id", "").split("@")[0] if "@s.whatsapp.net" in data_profile.get("id", "") else None)
+                        )
+                        if real_phone:
+                            telefone_bruto = real_phone
+                            log.info(f"[WPP Webhook] LID {remote_jid} resolvido com sucesso via API para: {telefone_bruto}")
+            except Exception as e:
+                log.error(f"[WPP Webhook] Erro resolvendo LID {remote_jid}: {e}")
+
+        if not telefone_bruto:
+            telefone_bruto = remote_jid.split("@")[0]
+
+        telefone = normalize_phone(telefone_bruto)
         
         if not telefone or not texto_msg:
             return {"status": "ok"}
