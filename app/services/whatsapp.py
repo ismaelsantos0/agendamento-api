@@ -35,7 +35,7 @@ async def enviar_mensagem(telefone: str, texto: str) -> bool:
     }
     
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=25.0) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
             log.info(f"[WPP ENVIADO -> {telefone}] Status: {response.status_code}")
