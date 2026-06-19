@@ -29,7 +29,14 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
     settings = result.scalar_one_or_none()
     if not settings:
-        settings = ClinicSettings(id="default", appointment_duration_minutes=60, msg_created=None, msg_confirmation=None)
+        settings = ClinicSettings(
+            id="default",
+            appointment_duration_minutes=60,
+            msg_created=None,
+            msg_confirmation=None,
+            msg_feedback_confirm=None,
+            msg_feedback_cancel=None
+        )
         db.add(settings)
         await db.commit()
         await db.refresh(settings)
@@ -47,7 +54,14 @@ async def update_settings(
     result = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
     settings = result.scalar_one_or_none()
     if not settings:
-        settings = ClinicSettings(id="default", appointment_duration_minutes=60, msg_created=None, msg_confirmation=None)
+        settings = ClinicSettings(
+            id="default",
+            appointment_duration_minutes=60,
+            msg_created=None,
+            msg_confirmation=None,
+            msg_feedback_confirm=None,
+            msg_feedback_cancel=None
+        )
         db.add(settings)
     
     settings.appointment_duration_minutes = settings_in.appointment_duration_minutes
@@ -55,6 +69,10 @@ async def update_settings(
         settings.msg_created = settings_in.msg_created
     if settings_in.msg_confirmation is not None:
         settings.msg_confirmation = settings_in.msg_confirmation
+    if settings_in.msg_feedback_confirm is not None:
+        settings.msg_feedback_confirm = settings_in.msg_feedback_confirm
+    if settings_in.msg_feedback_cancel is not None:
+        settings.msg_feedback_cancel = settings_in.msg_feedback_cancel
         
     await db.commit()
     await db.refresh(settings)

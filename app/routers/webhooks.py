@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.models import Appointment, Professional
+from app.models import Appointment, Professional, ClinicSettings
 from app.services.whatsapp import enviar_mensagem
 from app.config import get_settings
 from app.utils.phone import normalize_phone, phones_match
@@ -80,13 +80,17 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
 
         log.info(f"[WPP Webhook] Mensagem de {telefone}: '{texto_msg}'")
             
+        # Busca configurações do banco para obter os templates de feedback
+        settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
+        settings_db = settings_res.scalar_one_or_none()
+
         # Verifica se respondeu 1 ou 2
         if texto_msg == "1":
             novo_status = "confirmed"
-            msg_feedback = "Seu agendamento foi *CONFIRMADO* com sucesso! Aguardamos você."
+            msg_feedback_template = settings_db.msg_feedback_confirm if settings_db and settings_db.msg_feedback_confirm else "Seu agendamento foi *CONFIRMADO* com sucesso! Aguardamos você."
         elif texto_msg == "2":
             novo_status = "cancelled"
-            msg_feedback = "Seu agendamento foi *CANCELADO*."
+            msg_feedback_template = settings_db.msg_feedback_cancel if settings_db and settings_db.msg_feedback_cancel else "Seu agendamento foi *CANCELADO*."
         else:
             # Resposta não reconhecida, ignora (ou poderia mandar "Opção inválida")
             return {"status": "ok"}
@@ -105,6 +109,17 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
         if row:
             appt, prof = row
             appt.status = novo_status
+            
+            import pytz
+            data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+            
+            # Formata a mensagem de feedback final
+            msg_feedback = (
+                msg_feedback_template
+                .replace("{cliente}", appt.customer_name)
+                .replace("{profissional}", prof.name)
+                .replace("{data}", data_formatada)
+            )
             
             if novo_status == "cancelled":
                 appt.notes = (appt.notes + "\n[WhatsApp]: Cliente cancelou via robô.") if appt.notes else "[WhatsApp]: Cliente cancelou via robô."
