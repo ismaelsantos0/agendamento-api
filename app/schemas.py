@@ -97,3 +97,10 @@ class ClinicSettingsResponse(ClinicSettingsUpdate):
 class TestConfirmationMessagePayload(BaseModel):
     telefone: str
     msg_confirmation: Optional[str] = None
+
+class TestConfirmationMessageResponse(BaseModel):
+    status: str
+    preview: str
+    appointment_id: str
+    professional_name: str
+    customer_name: str

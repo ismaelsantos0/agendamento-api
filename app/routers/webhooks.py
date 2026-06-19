@@ -6,12 +6,13 @@ Escuta eventos da Evolution API.
 import logging
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Appointment, Professional
 from app.services.whatsapp import enviar_mensagem
 from app.config import get_settings
+from app.utils.phone import normalize_phone, phones_match
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -31,17 +32,24 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
     # Verifica se é um evento de mensagem recebida
     if payload.get("event") == "messages.upsert":
         data = payload.get("data", {})
+        key_data = data.get("key", {})
+
+        if key_data.get("fromMe"):
+            return {"status": "ok"}
+
         message_data = data.get("message", {})
         
         # Pega o texto da mensagem. Pode vir em text, conversation ou extendedTextMessage
         texto_msg = message_data.get("conversation") or message_data.get("extendedTextMessage", {}).get("text", "")
         texto_msg = texto_msg.strip()
         
-        remote_jid = data.get("key", {}).get("remoteJid", "")
-        telefone = remote_jid.split("@")[0] # extrai 5595999999999
+        remote_jid = key_data.get("remoteJid", "")
+        telefone = normalize_phone(remote_jid.split("@")[0])
         
         if not telefone or not texto_msg:
             return {"status": "ok"}
+
+        log.info(f"[WPP Webhook] Mensagem de {telefone}: '{texto_msg}'")
             
         # Verifica se respondeu 1 ou 2
         if texto_msg == "1":
@@ -54,17 +62,16 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
             # Resposta não reconhecida, ignora (ou poderia mandar "Opção inválida")
             return {"status": "ok"}
             
-        # Busca o agendamento mais recente desse telefone que esteja como 'pending'
-        # Em um sistema avançado, buscaria pela data mais próxima no futuro
         query = select(Appointment, Professional).join(Professional).where(
-            and_(
-                Appointment.customer_phone == telefone,
-                Appointment.status == "pending"
-            )
-        ).order_by(Appointment.start_time.asc()).limit(1)
+            Appointment.status == "pending"
+        ).order_by(Appointment.start_time.asc())
         
         result = await db.execute(query)
-        row = result.first()
+        row = None
+        for appt_candidate, prof_candidate in result.all():
+            if phones_match(appt_candidate.customer_phone, telefone):
+                row = (appt_candidate, prof_candidate)
+                break
         
         if row:
             appt, prof = row
@@ -84,6 +91,8 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
                 data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
                 aviso_admin = f"⚠️ *ATENÇÃO: CANCELAMENTO*\nO cliente {appt.customer_name} cancelou a consulta com {prof.name} do dia {data_formatada}."
                 await enviar_mensagem(settings.admin_phone, aviso_admin)
+        else:
+            log.warning(f"[WPP Webhook] Resposta '{texto_msg}' de {telefone}, mas nenhum agendamento pendente encontrado.")
                 
     # Sempre retorne status 200 rápido
     return {"status": "ok"}

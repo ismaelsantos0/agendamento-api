@@ -135,6 +135,29 @@ async def list_appointments(
         
     return response_list
 
+@router.get("/{appt_id}", response_model=AppointmentResponse)
+async def get_appointment(
+    appt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    result = await db.execute(
+        select(Appointment, Professional.name.label("professional_name"))
+        .join(Professional)
+        .where(Appointment.id == appt_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+
+    appt, prof_name = row
+    resp = AppointmentResponse.model_validate(appt)
+    resp.professional_name = prof_name
+    return resp
+
 @router.patch("/{appt_id}/status", response_model=AppointmentResponse)
 async def update_status(
     appt_id: uuid.UUID,
