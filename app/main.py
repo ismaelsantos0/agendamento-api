@@ -63,16 +63,16 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_confirmation VARCHAR"))
         except Exception:
             pass # Coluna já existe
-            
+
         try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_confirm VARCHAR"))
+            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_confirmed VARCHAR"))
         except Exception:
-            pass
-            
+            pass # Coluna já existe
+
         try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_cancel VARCHAR"))
+            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_cancelled VARCHAR"))
         except Exception:
-            pass
+            pass # Coluna já existe
 
     await seed_master()
     

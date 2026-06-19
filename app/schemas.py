@@ -89,8 +89,8 @@ class ClinicSettingsUpdate(BaseModel):
     appointment_duration_minutes: int
     msg_created: Optional[str] = None
     msg_confirmation: Optional[str] = None
-    msg_feedback_confirm: Optional[str] = None
-    msg_feedback_cancel: Optional[str] = None
+    msg_feedback_confirmed: Optional[str] = None
+    msg_feedback_cancelled: Optional[str] = None
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str

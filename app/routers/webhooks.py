@@ -80,17 +80,25 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
 
         log.info(f"[WPP Webhook] Mensagem de {telefone}: '{texto_msg}'")
             
-        # Busca configurações do banco para obter os templates de feedback
+        # Busca as configurações do banco de dados para usar as mensagens personalizadas
         settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
-        settings_db = settings_res.scalar_one_or_none()
+        db_settings = settings_res.scalar_one_or_none()
 
         # Verifica se respondeu 1 ou 2
         if texto_msg == "1":
             novo_status = "confirmed"
-            msg_feedback_template = settings_db.msg_feedback_confirm if settings_db and settings_db.msg_feedback_confirm else "Seu agendamento foi *CONFIRMADO* com sucesso! Aguardamos você."
+            msg_feedback = (
+                db_settings.msg_feedback_confirmed 
+                if db_settings and db_settings.msg_feedback_confirmed 
+                else "Seu agendamento foi *CONFIRMADO* com sucesso! Aguardamos você."
+            )
         elif texto_msg == "2":
             novo_status = "cancelled"
-            msg_feedback_template = settings_db.msg_feedback_cancel if settings_db and settings_db.msg_feedback_cancel else "Seu agendamento foi *CANCELADO*."
+            msg_feedback = (
+                db_settings.msg_feedback_cancelled 
+                if db_settings and db_settings.msg_feedback_cancelled 
+                else "Seu agendamento foi *CANCELADO*."
+            )
         else:
             # Resposta não reconhecida, ignora (ou poderia mandar "Opção inválida")
             return {"status": "ok"}
@@ -110,29 +118,26 @@ async def receber_resposta_wpp(request: Request, db: AsyncSession = Depends(get_
             appt, prof = row
             appt.status = novo_status
             
-            import pytz
-            data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
-            
-            # Formata a mensagem de feedback final
-            msg_feedback = (
-                msg_feedback_template
-                .replace("{cliente}", appt.customer_name)
-                .replace("{profissional}", prof.name)
-                .replace("{data}", data_formatada)
-            )
-            
             if novo_status == "cancelled":
                 appt.notes = (appt.notes + "\n[WhatsApp]: Cliente cancelou via robô.") if appt.notes else "[WhatsApp]: Cliente cancelou via robô."
                 
             await db.commit()
             
+            # Formata variáveis dinâmicas
+            import pytz
+            data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+            msg_feedback_final = (
+                msg_feedback
+                .replace("{cliente}", appt.customer_name)
+                .replace("{profissional}", prof.name)
+                .replace("{data}", data_formatada)
+            )
+            
             # Avisa o cliente que deu certo
-            await enviar_mensagem(telefone, msg_feedback)
+            await enviar_mensagem(telefone, msg_feedback_final)
             
             # Se for cancelado, avisa o admin
             if novo_status == "cancelled" and settings.admin_phone:
-                import pytz
-                data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
                 aviso_admin = f"⚠️ *ATENÇÃO: CANCELAMENTO*\nO cliente {appt.customer_name} cancelou a consulta com {prof.name} do dia {data_formatada}."
                 await enviar_mensagem(settings.admin_phone, aviso_admin)
         else:
