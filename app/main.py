@@ -53,26 +53,19 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
-        # Migração implícita (ALTER TABLE)
-        try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_created VARCHAR"))
-        except Exception:
-            pass # Coluna já existe
-            
-        try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_confirmation VARCHAR"))
-        except Exception:
-            pass # Coluna já existe
-
-        try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_confirmed VARCHAR"))
-        except Exception:
-            pass # Coluna já existe
-
-        try:
-            await conn.execute(text("ALTER TABLE clinic_settings ADD COLUMN msg_feedback_cancelled VARCHAR"))
-        except Exception:
-            pass # Coluna já existe
+        # Migração implícita (ALTER TABLE IF NOT EXISTS)
+        migrations = [
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_created VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_confirmation VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_confirmed VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_cancelled VARCHAR",
+        ]
+        for migration_sql in migrations:
+            try:
+                await conn.execute(text(migration_sql))
+                log.info(f"[DB] Migração OK: {migration_sql}")
+            except Exception as exc:
+                log.warning(f"[DB] Migração falhou (pode ser normal): {exc}")
 
     await seed_master()
     
@@ -121,3 +114,36 @@ async def reset_db():
         await conn.run_sync(Base.metadata.create_all)
     await seed_master()
     return {"status": "Banco recriado com sucesso! Volte ao painel e crie o profissional novamente."}
+
+@app.get("/fix-db-migrations", tags=["Sistema"])
+async def fix_db_migrations():
+    """Executa as migrações pendentes sem perder dados."""
+    results = []
+    migrations = [
+        "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_created VARCHAR",
+        "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_confirmation VARCHAR",
+        "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_confirmed VARCHAR",
+        "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_cancelled VARCHAR",
+    ]
+    async with engine.begin() as conn:
+        for sql in migrations:
+            try:
+                await conn.execute(text(sql))
+                results.append({"sql": sql, "status": "ok"})
+            except Exception as exc:
+                results.append({"sql": sql, "status": "erro", "detail": str(exc)})
+    return {"migrations": results}
+
+@app.get("/diagnose-db", tags=["Sistema"])
+async def diagnose_db():
+    """Verifica quais colunas existem na tabela clinic_settings."""
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await db.execute(text(
+                "SELECT column_name, data_type FROM information_schema.columns "
+                "WHERE table_name = 'clinic_settings' ORDER BY ordinal_position"
+            ))
+            cols = [{"column": row[0], "type": row[1]} for row in result.all()]
+            return {"table": "clinic_settings", "columns": cols}
+        except Exception as exc:
+            return {"error": str(exc)}

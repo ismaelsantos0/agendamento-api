@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import logging
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,6 +17,8 @@ from app.schemas import (
 from app.dependencies import get_current_user
 from app.utils.phone import normalize_phone
 
+log = logging.getLogger(__name__)
+
 DEFAULT_MSG_CONFIRMATION = (
     "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.\n\n"
     "Responda *1* para CONFIRMAR ou *2* para CANCELAR."
@@ -26,21 +29,25 @@ router = APIRouter(prefix="/settings", tags=["Configurações"])
 
 @router.get("", response_model=ClinicSettingsResponse)
 async def get_settings(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
-    settings = result.scalar_one_or_none()
-    if not settings:
-        settings = ClinicSettings(
-            id="default",
-            appointment_duration_minutes=60,
-            msg_created=None,
-            msg_confirmation=None,
-            msg_feedback_confirmed=None,
-            msg_feedback_cancelled=None
-        )
-        db.add(settings)
-        await db.commit()
-        await db.refresh(settings)
-    return settings
+    try:
+        result = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
+        settings = result.scalar_one_or_none()
+        if not settings:
+            settings = ClinicSettings(
+                id="default",
+                appointment_duration_minutes=60,
+                msg_created=None,
+                msg_confirmation=None,
+                msg_feedback_confirmed=None,
+                msg_feedback_cancelled=None
+            )
+            db.add(settings)
+            await db.commit()
+            await db.refresh(settings)
+        return settings
+    except Exception as exc:
+        log.error(f"[Settings] Erro ao buscar settings: {exc}")
+        raise HTTPException(status_code=500, detail=f"Erro no banco de dados: {str(exc)}")
 
 @router.put("", response_model=ClinicSettingsResponse)
 async def update_settings(
