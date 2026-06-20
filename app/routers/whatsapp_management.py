@@ -77,7 +77,7 @@ async def send_test_message(payload: TestMessagePayload, current_user = Depends(
         raise HTTPException(status_code=403, detail="Acesso negado")
         
     from app.services.whatsapp import enviar_mensagem
-    sucesso = await enviar_mensagem(payload.telefone, payload.texto)
+    sucesso, err_msg = await enviar_mensagem(payload.telefone, payload.texto)
     if not sucesso:
-        raise HTTPException(status_code=500, detail="Falha ao enviar mensagem. Verifique a conexão.")
+        raise HTTPException(status_code=500, detail=f"Falha ao enviar: {err_msg}")
     return {"status": "success"}

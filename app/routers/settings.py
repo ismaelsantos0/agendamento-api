@@ -148,9 +148,9 @@ async def test_confirmation_message(
 
     from app.services.whatsapp import enviar_mensagem
 
-    sucesso = await enviar_mensagem(telefone, texto)
+    sucesso, err_msg = await enviar_mensagem(telefone, texto)
     if not sucesso:
-        raise HTTPException(status_code=500, detail="Falha ao enviar mensagem. Verifique a conexão do WhatsApp.")
+        raise HTTPException(status_code=500, detail=f"Falha ao enviar: {err_msg}")
 
     return TestConfirmationMessageResponse(
         status="success",

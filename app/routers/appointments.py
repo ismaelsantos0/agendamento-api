@@ -189,10 +189,11 @@ async def test_whatsapp(telefone: str):
     settings = get_settings()
     
     # Tentamos enviar
-    sucesso = await enviar_mensagem(telefone, "Teste de disparo direto do Backend!")
+    sucesso, err_msg = await enviar_mensagem(telefone, "Teste de disparo direto do Backend!")
     
     return {
         "sucesso": sucesso,
+        "erro": err_msg if not sucesso else None,
         "config_url_existe": bool(settings.evolution_api_url),
         "config_key_existe": bool(settings.evolution_api_key),
         "config_instance_existe": bool(settings.evolution_instance),
