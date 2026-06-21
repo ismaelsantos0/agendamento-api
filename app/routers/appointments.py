@@ -327,7 +327,8 @@ async def reschedule_appointment(
     reschedule_data: AppointmentReschedule,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Appointment, Professional.name.label("professional_name")).join(Professional).where(Appointment.id == appt_id)
+    from sqlalchemy.orm import selectinload
+    query = select(Appointment, Professional.name.label("professional_name")).join(Professional).options(selectinload(Appointment.professional)).where(Appointment.id == appt_id)
     result = await db.execute(query)
     row = result.first()
     
