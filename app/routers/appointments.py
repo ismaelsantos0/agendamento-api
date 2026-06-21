@@ -141,7 +141,6 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
             from app.scheduler import scheduler
             from app.services.whatsapp import enviar_mensagem
             import pytz
-            from datetime import timezone
             
             # O start_time está em UTC
             hora_do_aviso = appt.start_time - timedelta(hours=2)
