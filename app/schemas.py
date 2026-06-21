@@ -1,8 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 from datetime import datetime, time, date
-from typing import Optional
-
+from typing import Optional, List
 
 # ─── Auth ───
 class Token(BaseModel):
@@ -106,6 +105,21 @@ class ClinicSettingsUpdate(BaseModel):
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str
+    model_config = ConfigDict(from_attributes=True)
+
+class ClinicServiceCreate(BaseModel):
+    name: str
+    duration_minutes: int
+    price: Optional[str] = None
+    professional_ids: Optional[List[str]] = None
+
+class ClinicServiceResponse(BaseModel):
+    id: UUID
+    name: str
+    duration_minutes: int
+    price: Optional[str] = None
+    professional_ids: Optional[List[str]] = None
+    
     model_config = ConfigDict(from_attributes=True)
 
 class TestConfirmationMessagePayload(BaseModel):

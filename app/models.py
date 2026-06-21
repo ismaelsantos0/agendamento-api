@@ -25,7 +25,27 @@ class Professional(Base):
 
     availability_rules = relationship("AvailabilityRule", back_populates="professional", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="professional")
+    services = relationship("ClinicService", secondary="professional_clinic_services", back_populates="professionals")
 
+
+from sqlalchemy import Table
+
+professional_clinic_services = Table(
+    "professional_clinic_services",
+    Base.metadata,
+    Column("professional_id", PG_UUID(as_uuid=True), ForeignKey("professionals.id"), primary_key=True),
+    Column("clinic_service_id", PG_UUID(as_uuid=True), ForeignKey("clinic_services.id"), primary_key=True)
+)
+
+class ClinicService(Base):
+    __tablename__ = "clinic_services"
+    
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    duration_minutes = Column(Integer, nullable=False, default=60)
+    price = Column(String, nullable=True)
+
+    professionals = relationship("Professional", secondary=professional_clinic_services, back_populates="services")
 
 class AvailabilityRule(Base):
     __tablename__ = "availability_rules"
