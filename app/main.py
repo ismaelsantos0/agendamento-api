@@ -38,14 +38,21 @@ async def seed_master() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
     log.info("=== Iniciando Sistema de Agendamento ===")
-    try:
-        async with AsyncSessionLocal() as db:
-            await db.execute(text("SELECT 1"))
-        log.info("[DB] Conexão com PostgreSQL estabelecida.")
-    except Exception as exc:
-        log.error(f"[DB] Falha ao conectar: {exc}")
-        raise
+    for attempt in range(10):
+        try:
+            async with AsyncSessionLocal() as db:
+                await db.execute(text("SELECT 1"))
+            log.info("[DB] Conexão com PostgreSQL estabelecida.")
+            break
+        except Exception as exc:
+            if "too many clients" in str(exc) and attempt < 9:
+                log.warning(f"[DB] Banco de dados lotado, aguardando 10s (Tentativa {attempt+1}/10)...")
+                await asyncio.sleep(10)
+            else:
+                log.error(f"[DB] Falha ao conectar: {exc}")
+                raise
 
     from app.scheduler import start_scheduler, shutdown_scheduler
     
