@@ -81,3 +81,29 @@ async def send_test_message(payload: TestMessagePayload, current_user = Depends(
     if not sucesso:
         raise HTTPException(status_code=500, detail=f"Falha ao enviar: {err_msg}")
     return {"status": "success"}
+
+@router.post("/logout")
+async def logout_whatsapp_instance(current_user = Depends(get_current_user)):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+        
+    settings = get_settings()
+    if not settings.evolution_api_url or not settings.evolution_api_key or not settings.evolution_instance:
+        raise HTTPException(status_code=400, detail="Credenciais não configuradas")
+
+    base_url = settings.evolution_api_url.rstrip('/')
+    logout_url = f"{base_url}/instance/logout/{settings.evolution_instance}"
+    headers = {"apikey": settings.evolution_api_key}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.delete(logout_url, headers=headers)
+            if resp.status_code in [200, 201]:
+                return {"success": True}
+            # Se deu 404, significa que já está deslogado ou não existe conexão, o que é sucesso para nós
+            if resp.status_code == 404:
+                return {"success": True}
+            raise HTTPException(status_code=resp.status_code, detail="Erro ao deslogar aparelho")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
