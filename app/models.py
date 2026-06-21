@@ -30,13 +30,6 @@ class Professional(Base):
 
 from sqlalchemy import Table
 
-professional_clinic_services = Table(
-    "professional_clinic_services",
-    Base.metadata,
-    Column("professional_id", PG_UUID(as_uuid=True), ForeignKey("professionals.id"), primary_key=True),
-    Column("clinic_service_id", PG_UUID(as_uuid=True), ForeignKey("clinic_services.id"), primary_key=True)
-)
-
 class ClinicService(Base):
     __tablename__ = "clinic_services"
     
@@ -45,7 +38,14 @@ class ClinicService(Base):
     duration_minutes = Column(Integer, nullable=False, default=60)
     price = Column(String, nullable=True)
 
-    professionals = relationship("Professional", secondary=professional_clinic_services, back_populates="services")
+    professionals = relationship("Professional", secondary="professional_clinic_services", back_populates="services")
+
+professional_clinic_services = Table(
+    "professional_clinic_services",
+    Base.metadata,
+    Column("professional_id", PG_UUID(as_uuid=True), ForeignKey("professionals.id"), primary_key=True),
+    Column("clinic_service_id", PG_UUID(as_uuid=True), ForeignKey("clinic_services.id"), primary_key=True)
+)
 
 class AvailabilityRule(Base):
     __tablename__ = "availability_rules"

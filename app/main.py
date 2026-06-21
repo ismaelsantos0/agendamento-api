@@ -59,6 +59,22 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_confirmation VARCHAR",
             "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_confirmed VARCHAR",
             "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_cancelled VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS clinic_name VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS address VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS opening_hours VARCHAR",
+            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS services VARCHAR",
+            "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name VARCHAR",
+            """CREATE TABLE IF NOT EXISTS clinic_services (
+                id UUID PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                duration_minutes INTEGER NOT NULL DEFAULT 60,
+                price VARCHAR
+            )""",
+            """CREATE TABLE IF NOT EXISTS professional_clinic_services (
+                professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
+                clinic_service_id UUID REFERENCES clinic_services(id) ON DELETE CASCADE,
+                PRIMARY KEY (professional_id, clinic_service_id)
+            )""",
         ]
         for migration_sql in migrations:
             try:
