@@ -34,9 +34,11 @@ async def create_professional(
     await db.refresh(new_prof)
     return new_prof
 
+import uuid
+
 @router.put("/{prof_id}", response_model=ProfessionalResponse)
 async def update_professional(
-    prof_id: str,
+    prof_id: uuid.UUID,
     prof_update: ProfessionalUpdate,
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
