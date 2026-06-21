@@ -226,5 +226,5 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     if errors:
-        return {"status": "error", "errors": errors}
-    return {"status": "ok"}
+        return {"status": "error", "errors": errors, "version": "new_raw_sql"}
+    return {"status": "ok", "version": "new_raw_sql"}
