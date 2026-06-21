@@ -70,6 +70,7 @@ class AppointmentCreate(BaseModel):
 class OTPRequest(BaseModel):
     customer_phone: str
     customer_name: str
+    professional_id: UUID
 
 class AppointmentResponse(BaseModel):
     id: UUID

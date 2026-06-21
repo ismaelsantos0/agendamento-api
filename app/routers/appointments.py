@@ -26,6 +26,7 @@ async def send_otp(request: OTPRequest, db: AsyncSession = Depends(get_db)):
     agora = datetime.now(timezone.utc)
     limit_query = select(func.count(Appointment.id)).where(
         Appointment.customer_phone == request.customer_phone,
+        Appointment.professional_id == request.professional_id,
         Appointment.status != "cancelled",
         Appointment.start_time > agora
     )
@@ -60,13 +61,19 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     otp_record = await db.get(OTPVerification, appt.customer_phone)
     if not otp_record or otp_record.code != appt.otp_code:
         raise HTTPException(status_code=400, detail="Código de verificação inválido.")
-    if otp_record.expires_at < datetime.now(timezone.utc):
+        
+    record_time = otp_record.expires_at
+    if record_time.tzinfo is None:
+        record_time = record_time.replace(tzinfo=timezone.utc)
+        
+    if record_time < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Código de verificação expirado.")
         
     # 2. Check limits again
     agora = datetime.now(timezone.utc)
     limit_query = select(func.count(Appointment.id)).where(
         Appointment.customer_phone == appt.customer_phone,
+        Appointment.professional_id == appt.professional_id,
         Appointment.status != "cancelled",
         Appointment.start_time > agora
     )
