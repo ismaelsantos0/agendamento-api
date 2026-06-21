@@ -49,15 +49,7 @@ async def get_whatsapp_qr(current_user = Depends(get_current_user)):
     base_url = settings.evolution_api_url.rstrip('/')
     headers = {"apikey": settings.evolution_api_key}
     
-    # 1. Deletar a instância primeiro para limpar qualquer sessão Baileys corrompida
-    delete_url = f"{base_url}/instance/delete/{settings.evolution_instance}"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.delete(delete_url, headers=headers)
-    except Exception:
-        pass # Ignora erro no delete, pois pode já não existir
-
-    # 2. Requisitar novo QR
+    # 1. Requisitar novo QR
     connect_url = f"{base_url}/instance/connect/{settings.evolution_instance}"
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -68,19 +60,16 @@ async def get_whatsapp_qr(current_user = Depends(get_current_user)):
                 create_url = f"{base_url}/instance/create"
                 create_payload = {
                     "instanceName": settings.evolution_instance,
-                    "qrcode": True,
                     "integration": "WHATSAPP-BAILEYS"
                 }
                 create_resp = await client.post(create_url, json=create_payload, headers=headers)
-                if create_resp.status_code in [200, 201]:
-                    data = create_resp.json()
-                    b64 = data.get("qrcode", {}).get("base64") or data.get("base64")
-                    if b64:
-                        if not b64.startswith("data:image"):
-                            b64 = f"data:image/png;base64,{b64}"
-                        return {"base64": b64}
-                    return {"error": "Instância criada, mas QR Code não retornado."}
-                return {"error": f"Falha ao criar instância: {create_resp.status_code}", "detail": create_resp.text}
+                if create_resp.status_code not in [200, 201]:
+                    return {"error": f"Falha ao criar instância: {create_resp.status_code}", "detail": create_resp.text}
+                
+                # Aguarda 1 segundo e tenta conectar de novo para pegar o QR
+                import asyncio
+                await asyncio.sleep(1.5)
+                response = await client.get(connect_url, headers=headers)
 
             if response.status_code == 200:
                 data = response.json()
