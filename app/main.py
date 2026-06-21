@@ -64,6 +64,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS opening_hours VARCHAR",
             "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS services VARCHAR",
             "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name VARCHAR",
+            "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS clinical_notes VARCHAR",
             """CREATE TABLE IF NOT EXISTS clinic_services (
                 id UUID PRIMARY KEY,
                 name VARCHAR NOT NULL,

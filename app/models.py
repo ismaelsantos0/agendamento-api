@@ -96,9 +96,10 @@ class Appointment(Base):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     
-    status = Column(String, default="pending") # pending, confirmed, cancelled, completed
+    status = Column(String, default="pending") # pending, confirmed, cancelled, completed, pending_reschedule
     notes = Column(String, nullable=True)
     service_name = Column(String, nullable=True)
+    clinical_notes = Column(String, nullable=True)
 
     professional = relationship("Professional", back_populates="appointments")
 

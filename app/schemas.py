@@ -83,12 +83,19 @@ class AppointmentResponse(BaseModel):
     status: str
     notes: Optional[str] = None
     service_name: Optional[str] = None
+    clinical_notes: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 class AppointmentStatusUpdate(BaseModel):
     status: str
     notes: Optional[str] = None
+
+class AppointmentReschedule(BaseModel):
+    start_time: datetime
+
+class AppointmentComplete(BaseModel):
+    clinical_notes: str
 
 
 # ─── Settings ───

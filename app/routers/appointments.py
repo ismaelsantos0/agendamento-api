@@ -7,7 +7,7 @@ import uuid
 
 from app.database import AsyncSessionLocal
 from app.models import Appointment, Professional, ClinicSettings, OTPVerification
-from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate, OTPRequest
+from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate, OTPRequest, AppointmentReschedule, AppointmentComplete
 from sqlalchemy import func
 import random
 from app.dependencies import get_current_user
@@ -245,6 +245,106 @@ async def list_appointments(
         response_list.append(resp)
         
     return response_list
+
+@router.get("/history", response_model=List[AppointmentResponse])
+async def get_patient_history(
+    phone: str,
+    name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    # Ignora diferenças de case e remove espaços extras
+    normalized_name = name.strip().lower()
+    
+    # We join with Professional to get the name
+    query = (
+        select(Appointment, Professional.name.label("professional_name"))
+        .join(Professional)
+        .where(Appointment.customer_phone == phone)
+        .order_by(Appointment.start_time.desc())
+    )
+    
+    result = await db.execute(query)
+    
+    response_list = []
+    for appt, prof_name in result.all():
+        # Apenas pega se o nome bater ignorando case
+        if appt.customer_name.strip().lower() == normalized_name:
+            resp = AppointmentResponse.model_validate(appt)
+            resp.professional_name = prof_name
+            response_list.append(resp)
+            
+    return response_list
+
+@router.put("/{appt_id}/reschedule", response_model=AppointmentResponse)
+async def reschedule_appointment(
+    appt_id: uuid.UUID,
+    reschedule_data: AppointmentReschedule,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(Appointment, Professional.name.label("professional_name")).join(Professional).where(Appointment.id == appt_id)
+    result = await db.execute(query)
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+        
+    appt, prof_name = row
+    
+    # Recalcula end_time
+    duration = appt.end_time - appt.start_time
+    appt.start_time = reschedule_data.start_time
+    appt.end_time = reschedule_data.start_time + duration
+    
+    # Muda status para pending
+    appt.status = "pending"
+    
+    await db.commit()
+    await db.refresh(appt)
+    
+    # Envia WhatsApp
+    from app.services.whatsapp import enviar_mensagem
+    from datetime import timezone
+    import pytz
+    data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+    
+    mensagem = (
+        f"Olá {appt.customer_name}! Sua consulta com {prof_name} foi REMARCADA pelo consultório para o dia {data_formatada}.\n\n"
+        f"Responda *1* para CONFIRMAR ou *2* para CANCELAR."
+    )
+    
+    try:
+        enviar_mensagem(appt.customer_phone, mensagem)
+    except Exception as e:
+        print(f"Erro ao enviar WhatsApp de remarcação: {e}")
+    
+    resp = AppointmentResponse.model_validate(appt)
+    resp.professional_name = prof_name
+    return resp
+
+@router.put("/{appt_id}/complete", response_model=AppointmentResponse)
+async def complete_appointment(
+    appt_id: uuid.UUID,
+    complete_data: AppointmentComplete,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(Appointment, Professional.name.label("professional_name")).join(Professional).where(Appointment.id == appt_id)
+    result = await db.execute(query)
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+        
+    appt, prof_name = row
+    
+    appt.status = "completed"
+    appt.clinical_notes = complete_data.clinical_notes
+    
+    await db.commit()
+    await db.refresh(appt)
+    
+    resp = AppointmentResponse.model_validate(appt)
+    resp.professional_name = prof_name
+    return resp
 
 @router.get("/{appt_id}", response_model=AppointmentResponse)
 async def get_appointment(
