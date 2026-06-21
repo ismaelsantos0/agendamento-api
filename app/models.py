@@ -50,6 +50,7 @@ class ClinicSettings(Base):
     msg_confirmation = Column(String, nullable=True)
     msg_feedback_confirmed = Column(String, nullable=True)
     msg_feedback_cancelled = Column(String, nullable=True)
+    services = Column(String, nullable=True)
 
 
 class Blockout(Base):
@@ -77,6 +78,7 @@ class Appointment(Base):
     
     status = Column(String, default="pending") # pending, confirmed, cancelled, completed
     notes = Column(String, nullable=True)
+    service_name = Column(String, nullable=True)
 
     professional = relationship("Professional", back_populates="appointments")
 

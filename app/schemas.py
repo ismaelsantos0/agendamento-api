@@ -66,6 +66,7 @@ class AppointmentCreate(BaseModel):
     start_time: datetime
     notes: Optional[str] = None
     otp_code: str
+    service_name: Optional[str] = None
 
 class OTPRequest(BaseModel):
     customer_phone: str
@@ -82,6 +83,7 @@ class AppointmentResponse(BaseModel):
     end_time: datetime
     status: str
     notes: Optional[str] = None
+    service_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -100,6 +102,7 @@ class ClinicSettingsUpdate(BaseModel):
     msg_confirmation: Optional[str] = None
     msg_feedback_confirmed: Optional[str] = None
     msg_feedback_cancelled: Optional[str] = None
+    services: Optional[str] = None
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str

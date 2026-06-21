@@ -191,5 +191,11 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
     try:
         await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN opening_hours VARCHAR"))
     except Exception: pass
+    try:
+        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN services VARCHAR"))
+    except Exception: pass
+    try:
+        await db.execute(text("ALTER TABLE appointments ADD COLUMN service_name VARCHAR"))
+    except Exception: pass
     await db.commit()
     return {"status": "ok"}

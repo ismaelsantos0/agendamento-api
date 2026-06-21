@@ -95,10 +95,20 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
         if not prof or not prof.is_active:
             raise HTTPException(status_code=404, detail="Profissional não encontrado")
 
-        # Lê duração das configurações
+        import json
         settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
         settings = settings_res.scalar_one_or_none()
         duration_minutes = settings.appointment_duration_minutes if settings else 60
+        
+        if appt.service_name and settings and settings.services:
+            try:
+                services_list = json.loads(settings.services)
+                for svc in services_list:
+                    if svc.get('name') == appt.service_name and svc.get('duration_minutes'):
+                        duration_minutes = int(svc.get('duration_minutes'))
+                        break
+            except Exception:
+                pass
 
         # Minimum notice check: start_time must be at least duration_minutes from now
         agora = datetime.now(timezone.utc)
@@ -126,6 +136,7 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
             start_time=appt.start_time,
             end_time=end_time,
             notes=appt.notes,
+            service_name=appt.service_name,
             status="pending"
         )
         db.add(new_appt)
