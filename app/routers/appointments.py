@@ -119,7 +119,7 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
     
     # Clear OTP
     if otp_record:
-        await db.delete(otp_record)
+        db.delete(otp_record)
         
     await db.commit()
     await db.refresh(new_appt)
