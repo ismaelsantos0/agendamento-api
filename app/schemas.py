@@ -64,7 +64,7 @@ class AppointmentCreate(BaseModel):
     customer_phone: str
     start_time: datetime
     notes: Optional[str] = None
-    otp_code: str
+    otp_code: Optional[str] = None
     service_name: Optional[str] = None
 
 class OTPRequest(BaseModel):
