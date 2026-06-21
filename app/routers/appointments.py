@@ -6,8 +6,10 @@ from datetime import timedelta, datetime, timezone
 import uuid
 
 from app.database import AsyncSessionLocal
-from app.models import Appointment, Professional, ClinicSettings
-from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate
+from app.models import Appointment, Professional, ClinicSettings, OTPVerification
+from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate, OTPRequest
+from sqlalchemy import func
+import random
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/appointments", tags=["Agendamentos"])
@@ -16,8 +18,63 @@ async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
+@router.post("/send-code", status_code=status.HTTP_200_OK)
+async def send_otp(request: OTPRequest, db: AsyncSession = Depends(get_db)):
+    from app.services.whatsapp import enviar_mensagem
+    
+    # Check rate limit: if phone already has 2 or more upcoming non-cancelled appointments
+    agora = datetime.now(timezone.utc)
+    limit_query = select(func.count(Appointment.id)).where(
+        Appointment.customer_phone == request.customer_phone,
+        Appointment.status != "cancelled",
+        Appointment.start_time > agora
+    )
+    count_res = await db.execute(limit_query)
+    count = count_res.scalar() or 0
+    if count >= 2:
+        raise HTTPException(status_code=400, detail="Limite de agendamentos atingido para este número.")
+        
+    code = f"{random.randint(1000, 9999)}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    
+    # Upsert OTP
+    existing = await db.get(OTPVerification, request.customer_phone)
+    if existing:
+        existing.code = code
+        existing.expires_at = expires_at
+    else:
+        new_otp = OTPVerification(phone=request.customer_phone, code=code, expires_at=expires_at)
+        db.add(new_otp)
+    await db.commit()
+    
+    msg = f"Olá {request.customer_name}! Seu código de verificação para agendamento na Clínica Vida é: *{code}*. Válido por 5 minutos."
+    sucesso, err_msg = await enviar_mensagem(request.customer_phone, msg)
+    if not sucesso:
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar WhatsApp: {err_msg}")
+        
+    return {"message": "Código enviado com sucesso!"}
+
 @router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends(get_db)):
+    # 1. Verify OTP
+    otp_record = await db.get(OTPVerification, appt.customer_phone)
+    if not otp_record or otp_record.code != appt.otp_code:
+        raise HTTPException(status_code=400, detail="Código de verificação inválido.")
+    if otp_record.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Código de verificação expirado.")
+        
+    # 2. Check limits again
+    agora = datetime.now(timezone.utc)
+    limit_query = select(func.count(Appointment.id)).where(
+        Appointment.customer_phone == appt.customer_phone,
+        Appointment.status != "cancelled",
+        Appointment.start_time > agora
+    )
+    count_res = await db.execute(limit_query)
+    count = count_res.scalar() or 0
+    if count >= 2:
+        raise HTTPException(status_code=400, detail="Limite de agendamentos atingido para este número.")
+
     # Verifica se profissional existe
     prof = await db.get(Professional, appt.professional_id)
     if not prof or not prof.is_active:
@@ -48,9 +105,15 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
         customer_phone=appt.customer_phone,
         start_time=appt.start_time,
         end_time=end_time,
-        notes=appt.notes
+        notes=appt.notes,
+        status="pending"
     )
     db.add(new_appt)
+    
+    # Clear OTP
+    if otp_record:
+        await db.delete(otp_record)
+        
     await db.commit()
     await db.refresh(new_appt)
     

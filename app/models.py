@@ -76,3 +76,10 @@ class Appointment(Base):
     notes = Column(String, nullable=True)
 
     professional = relationship("Professional", back_populates="appointments")
+
+class OTPVerification(Base):
+    __tablename__ = "otp_verifications"
+
+    phone = Column(String, primary_key=True)
+    code = Column(String, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
