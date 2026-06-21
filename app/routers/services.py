@@ -9,7 +9,7 @@ import uuid
 from app.database import get_db
 from app.models import ClinicService, Professional
 from app.schemas import ClinicServiceCreate, ClinicServiceResponse
-from app.security import get_current_user
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/services", tags=["Services"])
 
