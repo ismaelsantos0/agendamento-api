@@ -66,6 +66,7 @@ async def send_otp(request: OTPRequest, db: AsyncSession = Depends(get_db)):
 async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends(get_db)):
     try:
         # 1. Verify OTP
+        otp_record = None
         if appt.otp_code != "bypass_admin_123":
             otp_record = await db.get(OTPVerification, appt.customer_phone)
             if not otp_record or otp_record.code != appt.otp_code:
