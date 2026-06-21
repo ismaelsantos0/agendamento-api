@@ -6,7 +6,7 @@ from datetime import timedelta, datetime, timezone
 import uuid
 
 from app.database import AsyncSessionLocal
-from app.models import Appointment, Professional, ClinicSettings, OTPVerification
+from app.models import Appointment, Professional, ClinicSettings, OTPVerification, User
 from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate, OTPRequest, AppointmentReschedule, AppointmentComplete, PatientResponse
 from sqlalchemy import func
 import random
