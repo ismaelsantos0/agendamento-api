@@ -27,6 +27,14 @@ async def list_professionals(db: AsyncSession = Depends(get_db), current_user: U
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.get("/slug/{slug}", response_model=ProfessionalResponse)
+async def get_professional_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Professional).where(Professional.slug == slug, Professional.is_active == True))
+    prof = result.scalar_one_or_none()
+    if not prof:
+        raise HTTPException(status_code=404, detail="Profissional não encontrado")
+    return prof
+
 @router.post("", response_model=ProfessionalResponse, status_code=status.HTTP_201_CREATED)
 async def create_professional(
     prof: ProfessionalCreate,
@@ -36,7 +44,19 @@ async def create_professional(
     if current_user.role not in ("master", "clinica"):
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    new_prof = Professional(**prof.model_dump())
+    import re
+    prof_data = prof.model_dump()
+    if not prof_data.get("slug"):
+        base_slug = re.sub(r'[^a-z0-9]+', '-', prof_data["name"].lower()).strip('-')
+        # Check uniqueness (simplified, append random if exists)
+        from sqlalchemy import select
+        existing = await db.execute(select(Professional).where(Professional.slug == base_slug))
+        if existing.scalar_one_or_none():
+            import random
+            base_slug = f"{base_slug}-{random.randint(1000,9999)}"
+        prof_data["slug"] = base_slug
+
+    new_prof = Professional(**prof_data)
     db.add(new_prof)
     await db.commit()
     await db.refresh(new_prof)

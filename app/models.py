@@ -31,6 +31,8 @@ class Professional(Base):
     notify_rescheduled = Column(Boolean, default=True)
     notify_upcoming = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
+    slug = Column(String, unique=True, index=True, nullable=True)
+    has_custom_link = Column(Boolean, default=False)
 
     availability_rules = relationship("AvailabilityRule", back_populates="professional", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="professional")
@@ -80,6 +82,7 @@ class ClinicSettings(Base):
     msg_feedback_confirmed = Column(String, nullable=True)
     msg_feedback_cancelled = Column(String, nullable=True)
     services = Column(String, nullable=True)
+    allow_custom_links = Column(Boolean, default=False)
 
 
 class Blockout(Base):

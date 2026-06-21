@@ -47,6 +47,8 @@ class ProfessionalCreate(BaseModel):
     notify_rescheduled: bool = True
     notify_upcoming: bool = True
     is_active: bool = True
+    slug: Optional[str] = None
+    has_custom_link: bool = False
 
 class ProfessionalUpdate(BaseModel):
     name: Optional[str] = None
@@ -57,6 +59,8 @@ class ProfessionalUpdate(BaseModel):
     notify_rescheduled: Optional[bool] = None
     notify_upcoming: Optional[bool] = None
     is_active: Optional[bool] = None
+    slug: Optional[str] = None
+    has_custom_link: Optional[bool] = None
 
 class ProfessionalResponse(ProfessionalCreate):
     id: UUID
@@ -139,6 +143,7 @@ class ClinicSettingsUpdate(BaseModel):
     msg_feedback_confirmed: Optional[str] = None
     msg_feedback_cancelled: Optional[str] = None
     services: Optional[str] = None
+    allow_custom_links: Optional[bool] = None
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str
