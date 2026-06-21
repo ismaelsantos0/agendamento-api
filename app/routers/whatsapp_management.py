@@ -49,13 +49,13 @@ async def get_whatsapp_qr(current_user = Depends(get_current_user)):
     base_url = settings.evolution_api_url.rstrip('/')
     headers = {"apikey": settings.evolution_api_key}
     
-    # 1. Deslogar primeiro para forçar geração de novo QR Code
-    logout_url = f"{base_url}/instance/logout/{settings.evolution_instance}"
+    # 1. Deletar a instância primeiro para limpar qualquer sessão Baileys corrompida
+    delete_url = f"{base_url}/instance/delete/{settings.evolution_instance}"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.delete(logout_url, headers=headers)
+            await client.delete(delete_url, headers=headers)
     except Exception:
-        pass # Ignora erro no logout, pois pode já estar deslogado
+        pass # Ignora erro no delete, pois pode já não existir
 
     # 2. Requisitar novo QR
     connect_url = f"{base_url}/instance/connect/{settings.evolution_instance}"
@@ -122,18 +122,19 @@ async def logout_whatsapp_instance(current_user = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Credenciais não configuradas")
 
     base_url = settings.evolution_api_url.rstrip('/')
-    logout_url = f"{base_url}/instance/logout/{settings.evolution_instance}"
+    # Alterado de /logout/ para /delete/ para limpar sessões corrompidas do Baileys
+    delete_url = f"{base_url}/instance/delete/{settings.evolution_instance}"
     headers = {"apikey": settings.evolution_api_key}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.delete(logout_url, headers=headers)
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.delete(delete_url, headers=headers)
             if resp.status_code in [200, 201]:
                 return {"success": True}
-            # Se deu 404, significa que já está deslogado ou não existe conexão, o que é sucesso para nós
+            # Se deu 404, significa que já está deletado ou não existe conexão, o que é sucesso para nós
             if resp.status_code == 404:
                 return {"success": True}
-            raise HTTPException(status_code=resp.status_code, detail="Erro ao deslogar aparelho")
+            raise HTTPException(status_code=resp.status_code, detail="Erro ao deletar aparelho")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
