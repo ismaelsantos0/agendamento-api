@@ -164,13 +164,25 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
             
             data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
             # Lógica de Mensagens Personalizadas
-            msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
-            
-            msg_conf_template = settings.msg_confirmation if settings and settings.msg_confirmation else "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.\n\nResponda *1* para CONFIRMAR ou *2* para CANCELAR."
-            
-            # Faz o replace dinâmico
-            msg_criado = msg_criado_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
-            texto_msg = msg_conf_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
+            nome_servico = appt.service_name or ""
+            servico_linha = f"\n🩺 Serviço: {nome_servico}" if nome_servico else ""
+
+            msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!{servico}\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
+
+            msg_conf_template = settings.msg_confirmation if settings and settings.msg_confirmation else "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.{servico}\n\nResponda *1* para CONFIRMAR ou *2* para CANCELAR."
+
+            # Faz o replace dinâmico (incluindo {servico})
+            def apply_template(template: str) -> str:
+                return (
+                    template
+                    .replace("{cliente}", appt.customer_name)
+                    .replace("{profissional}", prof.name)
+                    .replace("{data}", data_formatada)
+                    .replace("{servico}", servico_linha)
+                )
+
+            msg_criado = apply_template(msg_criado_template)
+            texto_msg = apply_template(msg_conf_template)
 
             scheduler.add_job(
                 enviar_mensagem,
