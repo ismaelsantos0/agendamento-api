@@ -14,11 +14,25 @@ class UserCreate(BaseModel):
     password: str
     role: Optional[str] = "standard"
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str = "clinica"
+    professional_id: Optional[UUID] = None
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    professional_id: Optional[UUID] = None
+
 class UserOut(BaseModel):
     id: UUID
     username: str
     role: str
     is_active: bool
+    professional_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
 

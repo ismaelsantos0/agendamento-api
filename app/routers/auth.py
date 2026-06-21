@@ -10,11 +10,16 @@ from sqlalchemy import select
 
 from app.database  import get_db
 from app.models    import User
-from app.schemas   import Token
+from app.schemas   import Token, UserOut
 from app.security  import verify_password, create_access_token
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
+
+@router.get("/me", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 @router.post(
     "/token",
@@ -36,5 +41,9 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = create_access_token({"sub": user.username, "role": user.role})
+    token = create_access_token({
+        "sub": user.username, 
+        "role": user.role, 
+        "professional_id": str(user.professional_id) if user.professional_id else None
+    })
     return Token(access_token=token, token_type="bearer")

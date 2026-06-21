@@ -95,6 +95,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_cancelled BOOLEAN DEFAULT TRUE",
             "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_rescheduled BOOLEAN DEFAULT TRUE",
             "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_upcoming BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS professional_id UUID REFERENCES profissionais(id) ON DELETE SET NULL",
             """CREATE TABLE IF NOT EXISTS servicos_clinica (
                 id UUID PRIMARY KEY,
                 name VARCHAR NOT NULL,
@@ -154,17 +155,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.dependencies import require_master, require_operator_or_admin, get_current_user
 app.include_router(auth.router)
 app.include_router(users.router)
-app.include_router(professionals.router)
-app.include_router(availability.router)
-app.include_router(blockouts.router)
-app.include_router(appointments.router)
-app.include_router(settings_router.router)
-app.include_router(services.router)
+app.include_router(professionals.router, dependencies=[Depends(get_current_user)])
+app.include_router(availability.router, dependencies=[Depends(get_current_user)])
+app.include_router(blockouts.router, dependencies=[Depends(get_current_user)])
+app.include_router(appointments.router, dependencies=[Depends(get_current_user)])
+app.include_router(settings_router.router, dependencies=[Depends(require_master)])
+app.include_router(services.router, dependencies=[Depends(get_current_user)])
 from app.routers import webhooks, whatsapp_management
 app.include_router(webhooks.router)
-app.include_router(whatsapp_management.router)
+app.include_router(whatsapp_management.router, dependencies=[Depends(require_master)])
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():

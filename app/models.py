@@ -14,6 +14,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="standard")
     is_active = Column(Boolean, default=True)
+    
+    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("profissionais.id"), nullable=True)
+    professional = relationship("Professional")
 
 
 class Professional(Base):

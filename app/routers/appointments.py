@@ -235,11 +235,17 @@ async def list_appointments(
     end_date: str = None, 
     professional_id: uuid.UUID = None, 
     status: str = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = select(Appointment, Professional.name.label("professional_name")).join(Professional)
     
-    if professional_id:
+    # RBAC: Se for profissional, só vê sua própria agenda
+    if current_user.role == "profissional":
+        if not current_user.professional_id:
+            return [] # Profissional sem vínculo não vê nada
+        query = query.where(Appointment.professional_id == current_user.professional_id)
+    elif professional_id:
         query = query.where(Appointment.professional_id == professional_id)
         
     if status:
@@ -266,18 +272,23 @@ async def list_appointments(
     return response_list
 
 @router.get("/patients", response_model=List[PatientResponse])
-async def get_patients(db: AsyncSession = Depends(get_db)):
+async def get_patients(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Fetch all unique patients by phone and name, and their latest appointment date
     query = (
         select(
             Appointment.customer_phone,
             Appointment.customer_name,
-            func.max(Appointment.start_time).label("last_visit")
+            func.max(Appointment.start_time).label('last_appointment')
         )
         .where(Appointment.status == "completed")
-        .group_by(Appointment.customer_phone, Appointment.customer_name)
-        .order_by(func.max(Appointment.start_time).desc())
     )
+    
+    if current_user.role == "profissional":
+        if not current_user.professional_id:
+            return []
+        query = query.where(Appointment.professional_id == current_user.professional_id)
+
+    query = query.group_by(Appointment.customer_phone, Appointment.customer_name).order_by(func.max(Appointment.start_time).desc())
     
     result = await db.execute(query)
     
@@ -325,7 +336,8 @@ async def get_patient_history(
 async def reschedule_appointment(
     appt_id: uuid.UUID,
     reschedule_data: AppointmentReschedule,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     from sqlalchemy.orm import selectinload
     query = select(Appointment, Professional.name.label("professional_name")).join(Professional).options(selectinload(Appointment.professional)).where(Appointment.id == appt_id)
@@ -336,6 +348,9 @@ async def reschedule_appointment(
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
         
     appt, prof_name = row
+    
+    if current_user.role == "profissional" and appt.professional_id != current_user.professional_id:
+        raise HTTPException(status_code=403, detail="Acesso negado a agenda de outro profissional")
     
     # Recalcula end_time
     duration = appt.end_time - appt.start_time
@@ -428,16 +443,19 @@ async def update_status(
     appt_id: uuid.UUID,
     status_update: AppointmentStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode alterar status")
-        
     # include professional relation to access contact_number
     from sqlalchemy.orm import selectinload
-    appt = await db.scalar(select(Appointment).options(selectinload(Appointment.professional)).where(Appointment.id == appt_id))
+    query = select(Appointment).options(selectinload(Appointment.professional)).where(Appointment.id == appt_id)
+    result = await db.execute(query)
+    appt = result.scalar_one_or_none()
+    
     if not appt:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+
+    if current_user.role == "profissional" and appt.professional_id != current_user.professional_id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
         
     old_status = appt.status
     appt.status = status_update.status

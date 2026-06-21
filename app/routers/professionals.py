@@ -14,19 +14,27 @@ async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
+from app.models import User
+
 @router.get("", response_model=List[ProfessionalResponse])
-async def list_professionals(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Professional).where(Professional.is_active == True))
+async def list_professionals(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = select(Professional).where(Professional.is_active == True)
+    if current_user.role == "profissional":
+        if not current_user.professional_id:
+            return []
+        query = query.where(Professional.id == current_user.professional_id)
+        
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("", response_model=ProfessionalResponse, status_code=status.HTTP_201_CREATED)
 async def create_professional(
     prof: ProfessionalCreate,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode criar profissionais")
+    if current_user.role not in ("master", "clinica"):
+        raise HTTPException(status_code=403, detail="Acesso negado")
     
     new_prof = Professional(**prof.model_dump())
     db.add(new_prof)
@@ -41,9 +49,9 @@ async def update_professional(
     prof_id: uuid.UUID,
     prof_update: ProfessionalUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "master":
+    if current_user.role not in ("master", "clinica"):
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     result = await db.execute(select(Professional).where(Professional.id == prof_id))
@@ -63,10 +71,10 @@ async def update_professional(
 async def delete_professional(
     prof_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=403, detail="Apenas master pode deletar")
     
     result = await db.execute(select(Professional).where(Professional.id == prof_id))
     prof = result.scalar_one_or_none()
