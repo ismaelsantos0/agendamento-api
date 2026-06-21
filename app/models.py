@@ -25,7 +25,7 @@ class Professional(Base):
 
     availability_rules = relationship("AvailabilityRule", back_populates="professional", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="professional")
-    services = relationship("ClinicService", secondary="professional_clinic_services", back_populates="professionals")
+    services = relationship("ClinicService", secondary="profissionais_servicos_clinica", back_populates="professionals")
 
 
 from sqlalchemy import Table
@@ -38,7 +38,7 @@ class ClinicService(Base):
     duration_minutes = Column(Integer, nullable=False, default=60)
     price = Column(String, nullable=True)
 
-    professionals = relationship("Professional", secondary="professional_clinic_services", back_populates="services")
+    professionals = relationship("Professional", secondary="profissionais_servicos_clinica", back_populates="services")
 
 professional_clinic_services = Table(
     "profissionais_servicos_clinica",
