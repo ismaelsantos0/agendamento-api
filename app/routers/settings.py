@@ -58,8 +58,8 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode alterar configurações")
+    if current_user.role not in ["master", "clinica"]:
+        raise HTTPException(status_code=403, detail="Apenas admin ou clínica podem alterar configurações")
     
     result = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
     settings = result.scalar_one_or_none()
