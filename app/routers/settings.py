@@ -184,6 +184,7 @@ async def test_confirmation_message(
 @router.get("/upgrade-db", status_code=status.HTTP_200_OK)
 async def upgrade_db(db: AsyncSession = Depends(get_db)):
     from sqlalchemy import text
+    errors = []
     try:
         await db.execute(text("""
         CREATE TABLE IF NOT EXISTS clinic_services (
@@ -193,7 +194,8 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
             price VARCHAR
         )
         """))
-    except Exception: pass
+    except Exception as e:
+        errors.append(str(e))
     
     try:
         await db.execute(text("""
@@ -203,7 +205,9 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
             PRIMARY KEY (professional_id, clinic_service_id)
         )
         """))
-    except Exception: pass
+    except Exception as e:
+        errors.append(str(e))
+        
     try:
         await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN clinic_name VARCHAR"))
     except Exception: pass
@@ -220,4 +224,7 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
         await db.execute(text("ALTER TABLE appointments ADD COLUMN service_name VARCHAR"))
     except Exception: pass
     await db.commit()
+    
+    if errors:
+        return {"status": "error", "errors": errors}
     return {"status": "ok"}
