@@ -21,6 +21,12 @@ class Professional(Base):
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
+    profession = Column(String, nullable=True)
+    contact_number = Column(String, nullable=True)
+    notify_new = Column(Boolean, default=True)
+    notify_cancelled = Column(Boolean, default=True)
+    notify_rescheduled = Column(Boolean, default=True)
+    notify_upcoming = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
 
     availability_rules = relationship("AvailabilityRule", back_populates="professional", cascade="all, delete-orphan")

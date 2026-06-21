@@ -169,6 +169,22 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
             # Lógica de Mensagens Personalizadas
             nome_servico = appt.service_name or ""
             servico_linha = f"\n🩺 Serviço: {nome_servico}" if nome_servico else ""
+            
+            # --- PROFISSIONAL NOTIFICATIONS ---
+            if prof.contact_number:
+                if prof.notify_new:
+                    msg_prof_novo = f"Olá, {prof.name}! 📅 Novo agendamento de paciente.\n\n👤 Paciente: {appt.customer_name}\n📞 Contato: {appt.customer_phone}\n⏰ Data: {data_formatada}{servico_linha}"
+                    scheduler.add_job(
+                        enviar_mensagem, trigger='date', run_date=agora,
+                        kwargs={"telefone": prof.contact_number, "texto": msg_prof_novo}
+                    )
+                if prof.notify_upcoming and hora_do_aviso > agora:
+                    msg_prof_lembrete = f"Lembrete, {prof.name}! 🔔 Daqui a pouco você tem um agendamento.\n\n👤 Paciente: {appt.customer_name}\n⏰ Data: {data_formatada}{servico_linha}"
+                    scheduler.add_job(
+                        enviar_mensagem, trigger='date', run_date=hora_do_aviso,
+                        kwargs={"telefone": prof.contact_number, "texto": msg_prof_lembrete}
+                    )
+            # ----------------------------------
 
             msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!{servico}\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
 
@@ -345,6 +361,14 @@ async def reschedule_appointment(
         await enviar_mensagem(appt.customer_phone, mensagem)
     except Exception as e:
         print(f"Erro ao enviar WhatsApp de remarcação: {e}")
+        
+    # Notifica profissional
+    if appt.professional.contact_number and appt.professional.notify_rescheduled:
+        try:
+            msg_prof_remarcado = f"Aviso de Remarcação 🔄\nO agendamento de {appt.customer_name} foi remarcado para {data_formatada}."
+            await enviar_mensagem(appt.professional.contact_number, msg_prof_remarcado)
+        except Exception as e:
+            pass
     
     resp = AppointmentResponse.model_validate(appt)
     resp.professional_name = prof_name
@@ -398,7 +422,7 @@ async def get_appointment(
     resp.professional_name = prof_name
     return resp
 
-@router.patch("/{appt_id}/status", response_model=AppointmentResponse)
+@router.put("/{appt_id}/status", response_model=AppointmentResponse)
 async def update_status(
     appt_id: uuid.UUID,
     status_update: AppointmentStatusUpdate,
@@ -408,10 +432,13 @@ async def update_status(
     if current_user.role != "master":
         raise HTTPException(status_code=403, detail="Apenas admin pode alterar status")
         
-    appt = await db.get(Appointment, appt_id)
+    # include professional relation to access contact_number
+    from sqlalchemy.orm import selectinload
+    appt = await db.scalar(select(Appointment).options(selectinload(Appointment.professional)).where(Appointment.id == appt_id))
     if not appt:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
         
+    old_status = appt.status
     appt.status = status_update.status
     if status_update.notes is not None:
         if appt.notes:
@@ -420,6 +447,19 @@ async def update_status(
             appt.notes = "[Cancelamento]: " + status_update.notes
     await db.commit()
     await db.refresh(appt)
+
+    if appt.status == "cancelled" and old_status != "cancelled":
+        if appt.professional and appt.professional.contact_number and appt.professional.notify_cancelled:
+            from app.scheduler import scheduler
+            from app.services.whatsapp import enviar_mensagem
+            import pytz
+            data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+            msg_prof_canc = f"Aviso de Cancelamento ❌\nO agendamento de {appt.customer_name} marcado para {data_formatada} foi cancelado."
+            agora = datetime.now(timezone.utc)
+            scheduler.add_job(
+                enviar_mensagem, trigger='date', run_date=agora,
+                kwargs={"telefone": appt.professional.contact_number, "texto": msg_prof_canc}
+            )
     return appt
 
 @router.get("/test-whatsapp/{telefone}")

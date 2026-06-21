@@ -26,7 +26,23 @@ class UserOut(BaseModel):
 # ─── Professional ───
 class ProfessionalCreate(BaseModel):
     name: str
+    profession: Optional[str] = None
+    contact_number: Optional[str] = None
+    notify_new: bool = True
+    notify_cancelled: bool = True
+    notify_rescheduled: bool = True
+    notify_upcoming: bool = True
     is_active: bool = True
+
+class ProfessionalUpdate(BaseModel):
+    name: Optional[str] = None
+    profession: Optional[str] = None
+    contact_number: Optional[str] = None
+    notify_new: Optional[bool] = None
+    notify_cancelled: Optional[bool] = None
+    notify_rescheduled: Optional[bool] = None
+    notify_upcoming: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 class ProfessionalResponse(ProfessionalCreate):
     id: UUID

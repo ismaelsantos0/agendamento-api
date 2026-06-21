@@ -82,6 +82,12 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS services VARCHAR",
             "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS service_name VARCHAR",
             "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS clinical_notes VARCHAR",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS profession VARCHAR",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS contact_number VARCHAR",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_new BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_cancelled BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_rescheduled BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS notify_upcoming BOOLEAN DEFAULT TRUE",
             """CREATE TABLE IF NOT EXISTS servicos_clinica (
                 id UUID PRIMARY KEY,
                 name VARCHAR NOT NULL,

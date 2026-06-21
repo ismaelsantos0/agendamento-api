@@ -5,7 +5,7 @@ from typing import List
 
 from app.database import AsyncSessionLocal
 from app.models import Professional
-from app.schemas import ProfessionalCreate, ProfessionalResponse
+from app.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/professionals", tags=["Profissionais"])
@@ -33,3 +33,26 @@ async def create_professional(
     await db.commit()
     await db.refresh(new_prof)
     return new_prof
+
+@router.put("/{prof_id}", response_model=ProfessionalResponse)
+async def update_professional(
+    prof_id: str,
+    prof_update: ProfessionalUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    result = await db.execute(select(Professional).where(Professional.id == prof_id))
+    prof = result.scalar_one_or_none()
+    if not prof:
+        raise HTTPException(status_code=404, detail="Profissional não encontrado")
+    
+    update_data = prof_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(prof, key, value)
+        
+    await db.commit()
+    await db.refresh(prof)
+    return prof
