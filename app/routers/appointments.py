@@ -100,6 +100,11 @@ async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends
         settings = settings_res.scalar_one_or_none()
         duration_minutes = settings.appointment_duration_minutes if settings else 60
 
+        # Minimum notice check: start_time must be at least duration_minutes from now
+        agora = datetime.now(timezone.utc)
+        if appt.start_time < agora + timedelta(minutes=duration_minutes):
+            raise HTTPException(status_code=400, detail="O horário deve ser agendado com antecedência mínima de 1 sessão.")
+
         # Duração dinâmica
         end_time = appt.start_time + timedelta(minutes=duration_minutes)
 
