@@ -42,6 +42,9 @@ class ClinicSettings(Base):
     __tablename__ = "clinic_settings"
 
     id = Column(String, primary_key=True, default="default")
+    clinic_name = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    opening_hours = Column(String, nullable=True)
     appointment_duration_minutes = Column(Integer, default=60, nullable=False)
     msg_created = Column(String, nullable=True)
     msg_confirmation = Column(String, nullable=True)

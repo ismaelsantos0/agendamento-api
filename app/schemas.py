@@ -92,6 +92,9 @@ class AppointmentStatusUpdate(BaseModel):
 
 # ─── Settings ───
 class ClinicSettingsUpdate(BaseModel):
+    clinic_name: Optional[str] = None
+    address: Optional[str] = None
+    opening_hours: Optional[str] = None
     appointment_duration_minutes: int
     msg_created: Optional[str] = None
     msg_confirmation: Optional[str] = None
