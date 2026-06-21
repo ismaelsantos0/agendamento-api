@@ -61,11 +61,17 @@ async def update_user(user_id: UUID, payload: UserUpdate, db: AsyncSession = Dep
     return user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_master)])
-async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_master)):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Você não pode excluir a si mesmo.")
+    
+    if user.username == "master":
+        raise HTTPException(status_code=400, detail="O usuário master principal não pode ser inativado.")
 
     user.is_active = False
     await db.commit()
