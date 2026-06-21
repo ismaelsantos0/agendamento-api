@@ -138,4 +138,8 @@ class TestConfirmationMessageResponse(BaseModel):
     preview: str
     appointment_id: str
     professional_name: str
-    customer_name: str
+
+class PatientResponse(BaseModel):
+    name: str
+    phone: str
+    last_visit: Optional[datetime] = None
