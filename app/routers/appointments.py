@@ -303,9 +303,8 @@ async def reschedule_appointment(
     
     # Envia WhatsApp
     from app.services.whatsapp import enviar_mensagem
-    from datetime import timezone
-    import pytz
-    data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+    from datetime import timezone, timedelta
+    data_formatada = appt.start_time.astimezone(timezone(timedelta(hours=-3))).strftime('%d/%m/%Y às %H:%M')
     
     mensagem = (
         f"Olá {appt.customer_name}! Sua consulta com {prof_name} foi REMARCADA pelo consultório para o dia {data_formatada}.\n\n"
@@ -313,7 +312,7 @@ async def reschedule_appointment(
     )
     
     try:
-        enviar_mensagem(appt.customer_phone, mensagem)
+        await enviar_mensagem(appt.customer_phone, mensagem)
     except Exception as e:
         print(f"Erro ao enviar WhatsApp de remarcação: {e}")
     
