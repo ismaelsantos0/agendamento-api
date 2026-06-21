@@ -24,8 +24,9 @@ if db_url.startswith("postgresql://"):
 engine = create_async_engine(
     db_url,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=2,
+    max_overflow=5,
+    pool_recycle=300, # Recycle connections every 5 mins
     echo=False,   # True para debug SQL
 )
 
