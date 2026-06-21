@@ -62,12 +62,42 @@ async def get_whatsapp_qr(current_user = Depends(get_current_user)):
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(connect_url, headers=headers)
+            
+            # Se deu 404, significa que a instância não existe! Vamos criá-la.
+            if response.status_code == 404:
+                create_url = f"{base_url}/instance/create"
+                create_payload = {
+                    "instanceName": settings.evolution_instance,
+                    "qrcode": True,
+                    "integration": "WHATSAPP-BAILEYS"
+                }
+                create_resp = await client.post(create_url, json=create_payload, headers=headers)
+                if create_resp.status_code in [200, 201]:
+                    data = create_resp.json()
+                    b64 = data.get("qrcode", {}).get("base64") or data.get("base64")
+                    if b64:
+                        if not b64.startswith("data:image"):
+                            b64 = f"data:image/png;base64,{b64}"
+                        return {"base64": b64}
+                    return {"error": "Instância criada, mas QR Code não retornado."}
+                return {"error": f"Falha ao criar instância: {create_resp.status_code}", "detail": create_resp.text}
+
             if response.status_code == 200:
                 data = response.json()
                 if "base64" in data:
-                    return {"base64": data["base64"]}
+                    # EV API v2 sometimes returns pure base64 without prefix, sometimes with prefix.
+                    b64 = data["base64"]
+                    if not b64.startswith("data:image"):
+                        b64 = f"data:image/png;base64,{b64}"
+                    return {"base64": b64}
+                elif "qrcode" in data:
+                    b64 = data["qrcode"]
+                    if not b64.startswith("data:image"):
+                        b64 = f"data:image/png;base64,{b64}"
+                    return {"base64": b64}
                 return {"error": "QR Code não retornado", "data": data}
-            return {"error": "Erro ao gerar QR Code", "detail": response.text}
+            
+            return {"error": f"Erro HTTP {response.status_code}", "detail": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
