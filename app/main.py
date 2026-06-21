@@ -82,6 +82,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from fastapi.responses import JSONResponse
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log.error(f"Global exception: {exc}")
+    log.error(traceback.format_exc())
+    return JSONResponse(status_code=500, content={"detail": f"Erro Interno: {str(exc)}"})
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    msg = ", ".join([f"{e['loc'][-1]}: {e['msg']}" for e in errors])
+    return JSONResponse(status_code=422, content={"detail": f"Erro de Validação: {msg}"})
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
