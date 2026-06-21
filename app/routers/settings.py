@@ -178,3 +178,18 @@ async def test_confirmation_message(
         professional_name=prof.name,
         customer_name=customer_name,
     )
+
+@router.get("/upgrade-db", status_code=status.HTTP_200_OK)
+async def upgrade_db(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN clinic_name VARCHAR"))
+    except Exception: pass
+    try:
+        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN address VARCHAR"))
+    except Exception: pass
+    try:
+        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN opening_hours VARCHAR"))
+    except Exception: pass
+    await db.commit()
+    return {"status": "ok"}
