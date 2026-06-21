@@ -1,28 +1,22 @@
 import urllib.request
-import urllib.parse
+import urllib.error
 import json
 
-url = 'https://agendamentos01-production.up.railway.app/auth/token'
-data = urllib.parse.urlencode({'username': 'master', 'password': 'change-me-immediately'}).encode('utf-8')
-req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+url = 'https://agendamentos01-production.up.railway.app/appointments'
+data = {
+    'professional_id': 'c14e1a0b-1188-44d4-9d58-96c21e6466f9',
+    'customer_name': 'Test',
+    'customer_phone': '5597991728899',
+    'start_time': '2026-06-21T10:00:00Z',
+    'otp_code': '1234'
+}
+req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'})
+
 try:
     with urllib.request.urlopen(req) as response:
-        token = json.loads(response.read().decode())['access_token']
-        print('Got token')
-        
-        # Now get professionals
-        req2 = urllib.request.Request('https://agendamentos01-production.up.railway.app/professionals', headers={'Authorization': 'Bearer ' + token})
-        with urllib.request.urlopen(req2) as resp2:
-            profs = json.loads(resp2.read().decode())
-            print('Profs:', profs)
-            
-            if profs:
-                prof_id = profs[0]['id']
-                payload = json.dumps({'professional_id': prof_id, 'day_of_week': 1, 'start_time': '09:00:00', 'end_time': '18:00:00'}).encode('utf-8')
-                req3 = urllib.request.Request('https://agendamentos01-production.up.railway.app/availability', data=payload, headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
-                with urllib.request.urlopen(req3) as resp3:
-                    print('Create rule response:', resp3.read().decode())
+        print('Success:', response.read().decode('utf-8'))
 except urllib.error.HTTPError as e:
-    print('HTTPError:', e.code, e.read().decode())
+    print('HTTPError:', e.code)
+    print('Reason:', e.read().decode('utf-8'))
 except Exception as e:
     print('Error:', str(e))

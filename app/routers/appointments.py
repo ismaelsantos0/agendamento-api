@@ -18,6 +18,13 @@ async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
+@router.get("/clear-all", status_code=status.HTTP_200_OK)
+async def clear_all_appointments(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import delete
+    await db.execute(delete(Appointment))
+    await db.commit()
+    return {"message": "All appointments cleared"}
+
 @router.post("/send-code", status_code=status.HTTP_200_OK)
 async def send_otp(request: OTPRequest, db: AsyncSession = Depends(get_db)):
     from app.services.whatsapp import enviar_mensagem
@@ -57,117 +64,124 @@ async def send_otp(request: OTPRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment(appt: AppointmentCreate, db: AsyncSession = Depends(get_db)):
-    # 1. Verify OTP
-    otp_record = await db.get(OTPVerification, appt.customer_phone)
-    if not otp_record or otp_record.code != appt.otp_code:
-        raise HTTPException(status_code=400, detail="Código de verificação inválido.")
-        
-    record_time = otp_record.expires_at
-    if record_time.tzinfo is None:
-        record_time = record_time.replace(tzinfo=timezone.utc)
-        
-    if record_time < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Código de verificação expirado.")
-        
-    # 2. Check limits again
-    agora = datetime.now(timezone.utc)
-    limit_query = select(func.count(Appointment.id)).where(
-        Appointment.customer_phone == appt.customer_phone,
-        Appointment.professional_id == appt.professional_id,
-        Appointment.status != "cancelled",
-        Appointment.start_time > agora
-    )
-    count_res = await db.execute(limit_query)
-    count = count_res.scalar() or 0
-    if count >= 2:
-        raise HTTPException(status_code=400, detail="Limite de agendamentos atingido para este número.")
-
-    # Verifica se profissional existe
-    prof = await db.get(Professional, appt.professional_id)
-    if not prof or not prof.is_active:
-        raise HTTPException(status_code=404, detail="Profissional não encontrado")
-
-    # Lê duração das configurações
-    settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
-    settings = settings_res.scalar_one_or_none()
-    duration_minutes = settings.appointment_duration_minutes if settings else 60
-
-    # Duração dinâmica
-    end_time = appt.start_time + timedelta(minutes=duration_minutes)
-
-    # Verifica conflitos DESTE profissional
-    conflict_query = select(Appointment).where(
-        Appointment.professional_id == appt.professional_id,
-        Appointment.status != "cancelled",
-        Appointment.start_time < end_time,
-        Appointment.end_time > appt.start_time
-    )
-    conflict = await db.execute(conflict_query)
-    if conflict.scalars().first():
-        raise HTTPException(status_code=400, detail="Profissional não tem disponibilidade neste horário")
-
-    new_appt = Appointment(
-        professional_id=appt.professional_id,
-        customer_name=appt.customer_name,
-        customer_phone=appt.customer_phone,
-        start_time=appt.start_time,
-        end_time=end_time,
-        notes=appt.notes,
-        status="pending"
-    )
-    db.add(new_appt)
-    
-    # Clear OTP
-    if otp_record:
-        db.delete(otp_record)
-        
-    await db.commit()
-    await db.refresh(new_appt)
-    
-    # Preenche o nome do prof pra retornar bonito
-    response_data = AppointmentResponse.model_validate(new_appt)
-    response_data.professional_name = prof.name
-    
-    # ─── AGENDAMENTO DE WHATSAPP ───────────────────────────────────────────────
-    if appt.customer_phone:
-        from app.scheduler import scheduler
-        from app.services.whatsapp import enviar_mensagem
-        import pytz
-        from datetime import timezone
-        
-        # O start_time está em UTC
-        hora_do_aviso = appt.start_time - timedelta(hours=2)
+    try:
+        # 1. Verify OTP
+        otp_record = await db.get(OTPVerification, appt.customer_phone)
+        if not otp_record or otp_record.code != appt.otp_code:
+            raise HTTPException(status_code=400, detail="Código de verificação inválido.")
+            
+        record_time = otp_record.expires_at
+        if record_time.tzinfo is None:
+            record_time = record_time.replace(tzinfo=timezone.utc)
+            
+        if record_time < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Código de verificação expirado.")
+            
+        # 2. Check limits again
         agora = datetime.now(timezone.utc)
-        
-        data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
-        # Lógica de Mensagens Personalizadas
-        msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
-        
-        msg_conf_template = settings.msg_confirmation if settings and settings.msg_confirmation else "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.\n\nResponda *1* para CONFIRMAR ou *2* para CANCELAR."
-        
-        # Faz o replace dinâmico
-        msg_criado = msg_criado_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
-        texto_msg = msg_conf_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
-
-        scheduler.add_job(
-            enviar_mensagem,
-            trigger='date',
-            run_date=agora,
-            kwargs={"telefone": appt.customer_phone, "texto": msg_criado}
+        limit_query = select(func.count(Appointment.id)).where(
+            Appointment.customer_phone == appt.customer_phone,
+            Appointment.professional_id == appt.professional_id,
+            Appointment.status != "cancelled",
+            Appointment.start_time > agora
         )
+        count_res = await db.execute(limit_query)
+        count = count_res.scalar() or 0
+        if count >= 2:
+            raise HTTPException(status_code=400, detail="Limite de agendamentos atingido para este número.")
 
-        # Se faltar menos de 2 horas pro agendamento, NÃO precisamos agendar a confirmação para o passado,
-        # enviaremos apenas a mensagem de "criado" que já serve como aviso.
-        # Se for no futuro, agendamos a confirmação para 2 horas antes.
-        if hora_do_aviso > agora:
+        # Verifica se profissional existe
+        prof = await db.get(Professional, appt.professional_id)
+        if not prof or not prof.is_active:
+            raise HTTPException(status_code=404, detail="Profissional não encontrado")
+
+        # Lê duração das configurações
+        settings_res = await db.execute(select(ClinicSettings).where(ClinicSettings.id == "default"))
+        settings = settings_res.scalar_one_or_none()
+        duration_minutes = settings.appointment_duration_minutes if settings else 60
+
+        # Duração dinâmica
+        end_time = appt.start_time + timedelta(minutes=duration_minutes)
+
+        # Verifica conflitos DESTE profissional
+        conflict_query = select(Appointment).where(
+            Appointment.professional_id == appt.professional_id,
+            Appointment.status != "cancelled",
+            Appointment.start_time < end_time,
+            Appointment.end_time > appt.start_time
+        )
+        conflict = await db.execute(conflict_query)
+        if conflict.scalars().first():
+            raise HTTPException(status_code=400, detail="Profissional não tem disponibilidade neste horário")
+
+        new_appt = Appointment(
+            professional_id=appt.professional_id,
+            customer_name=appt.customer_name,
+            customer_phone=appt.customer_phone,
+            start_time=appt.start_time,
+            end_time=end_time,
+            notes=appt.notes,
+            status="pending"
+        )
+        db.add(new_appt)
+        
+        # Clear OTP
+        if otp_record:
+            db.delete(otp_record)
+            
+        await db.commit()
+        await db.refresh(new_appt)
+        
+        # Preenche o nome do prof pra retornar bonito
+        response_data = AppointmentResponse.model_validate(new_appt)
+        response_data.professional_name = prof.name
+        
+        # ─── AGENDAMENTO DE WHATSAPP ───────────────────────────────────────────────
+        if appt.customer_phone:
+            from app.scheduler import scheduler
+            from app.services.whatsapp import enviar_mensagem
+            import pytz
+            from datetime import timezone
+            
+            # O start_time está em UTC
+            hora_do_aviso = appt.start_time - timedelta(hours=2)
+            agora = datetime.now(timezone.utc)
+            
+            data_formatada = appt.start_time.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M')
+            # Lógica de Mensagens Personalizadas
+            msg_criado_template = settings.msg_created if settings and settings.msg_created else "Olá {cliente}! 📅 Seu agendamento com {profissional} para {data} foi registrado com sucesso!\n\n⏳ Nós enviaremos uma mensagem de confirmação 2 horas antes da consulta."
+            
+            msg_conf_template = settings.msg_confirmation if settings and settings.msg_confirmation else "Olá {cliente}! Você tem um agendamento com {profissional} para {data}.\n\nResponda *1* para CONFIRMAR ou *2* para CANCELAR."
+            
+            # Faz o replace dinâmico
+            msg_criado = msg_criado_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
+            texto_msg = msg_conf_template.replace("{cliente}", appt.customer_name).replace("{profissional}", prof.name).replace("{data}", data_formatada)
+
             scheduler.add_job(
                 enviar_mensagem,
                 trigger='date',
-                run_date=hora_do_aviso,
-                kwargs={"telefone": appt.customer_phone, "texto": texto_msg}
+                run_date=agora,
+                kwargs={"telefone": appt.customer_phone, "texto": msg_criado}
             )
-            
-    return response_data
+
+            # Se faltar menos de 2 horas pro agendamento, NÃO precisamos agendar a confirmação para o passado,
+            # enviaremos apenas a mensagem de "criado" que já serve como aviso.
+            # Se for no futuro, agendamos a confirmação para 2 horas antes.
+            if hora_do_aviso > agora:
+                scheduler.add_job(
+                    enviar_mensagem,
+                    trigger='date',
+                    run_date=hora_do_aviso,
+                    kwargs={"telefone": appt.customer_phone, "texto": texto_msg}
+                )
+                
+        return response_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"DEBUG ERROR: {str(e)}")
 
 @router.get("", response_model=List[AppointmentResponse])
 async def list_appointments(
