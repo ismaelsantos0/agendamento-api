@@ -51,29 +51,46 @@ async def lifespan(app: FastAPI):
     
     log.info("[DB] Sincronizando tabelas no PostgreSQL...")
     async with engine.begin() as conn:
+        renames = [
+            ("users", "usuarios"),
+            ("professionals", "profissionais"),
+            ("clinic_services", "servicos_clinica"),
+            ("professional_clinic_services", "profissionais_servicos_clinica"),
+            ("availability_rules", "regras_disponibilidade"),
+            ("clinic_settings", "configuracoes_clinica"),
+            ("blockouts", "bloqueios"),
+            ("appointments", "agendamentos"),
+            ("otp_verifications", "verificacoes_otp"),
+        ]
+        for old_name, new_name in renames:
+            try:
+                await conn.execute(text(f"ALTER TABLE IF EXISTS {old_name} RENAME TO {new_name}"))
+            except Exception as e:
+                pass
+
         await conn.run_sync(Base.metadata.create_all)
         
         # Migração implícita (ALTER TABLE IF NOT EXISTS)
         migrations = [
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_created VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_confirmation VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_confirmed VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS msg_feedback_cancelled VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS clinic_name VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS address VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS opening_hours VARCHAR",
-            "ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS services VARCHAR",
-            "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name VARCHAR",
-            "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS clinical_notes VARCHAR",
-            """CREATE TABLE IF NOT EXISTS clinic_services (
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS msg_created VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS msg_confirmation VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS msg_feedback_confirmed VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS msg_feedback_cancelled VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS clinic_name VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS address VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS opening_hours VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS services VARCHAR",
+            "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS service_name VARCHAR",
+            "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS clinical_notes VARCHAR",
+            """CREATE TABLE IF NOT EXISTS servicos_clinica (
                 id UUID PRIMARY KEY,
                 name VARCHAR NOT NULL,
                 duration_minutes INTEGER NOT NULL DEFAULT 60,
                 price VARCHAR
             )""",
-            """CREATE TABLE IF NOT EXISTS professional_clinic_services (
-                professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
-                clinic_service_id UUID REFERENCES clinic_services(id) ON DELETE CASCADE,
+            """CREATE TABLE IF NOT EXISTS profissionais_servicos_clinica (
+                professional_id UUID REFERENCES profissionais(id) ON DELETE CASCADE,
+                clinic_service_id UUID REFERENCES servicos_clinica(id) ON DELETE CASCADE,
                 PRIMARY KEY (professional_id, clinic_service_id)
             )""",
         ]

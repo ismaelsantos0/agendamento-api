@@ -7,7 +7,7 @@ import datetime
 from app.database import Base
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "usuarios"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String, unique=True, index=True, nullable=False)
@@ -17,7 +17,7 @@ class User(Base):
 
 
 class Professional(Base):
-    __tablename__ = "professionals"
+    __tablename__ = "profissionais"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -31,7 +31,7 @@ class Professional(Base):
 from sqlalchemy import Table
 
 class ClinicService(Base):
-    __tablename__ = "clinic_services"
+    __tablename__ = "servicos_clinica"
     
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -41,17 +41,17 @@ class ClinicService(Base):
     professionals = relationship("Professional", secondary="professional_clinic_services", back_populates="services")
 
 professional_clinic_services = Table(
-    "professional_clinic_services",
+    "profissionais_servicos_clinica",
     Base.metadata,
-    Column("professional_id", PG_UUID(as_uuid=True), ForeignKey("professionals.id"), primary_key=True),
-    Column("clinic_service_id", PG_UUID(as_uuid=True), ForeignKey("clinic_services.id"), primary_key=True)
+    Column("professional_id", PG_UUID(as_uuid=True), ForeignKey("profissionais.id"), primary_key=True),
+    Column("clinic_service_id", PG_UUID(as_uuid=True), ForeignKey("servicos_clinica.id"), primary_key=True)
 )
 
 class AvailabilityRule(Base):
-    __tablename__ = "availability_rules"
+    __tablename__ = "regras_disponibilidade"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("professionals.id"), nullable=False)
+    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("profissionais.id"), nullable=False)
     day_of_week = Column(Integer, nullable=False)  # 0=Dom, 1=Seg...
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -59,7 +59,7 @@ class AvailabilityRule(Base):
     professional = relationship("Professional", back_populates="availability_rules")
 
 class ClinicSettings(Base):
-    __tablename__ = "clinic_settings"
+    __tablename__ = "configuracoes_clinica"
 
     id = Column(String, primary_key=True, default="default")
     clinic_name = Column(String, nullable=True)
@@ -74,10 +74,10 @@ class ClinicSettings(Base):
 
 
 class Blockout(Base):
-    __tablename__ = "blockouts"
+    __tablename__ = "bloqueios"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("professionals.id"), nullable=False)
+    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("profissionais.id"), nullable=False)
     date = Column(Date, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -85,10 +85,10 @@ class Blockout(Base):
     professional = relationship("Professional")
 
 class Appointment(Base):
-    __tablename__ = "appointments"
+    __tablename__ = "agendamentos"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("professionals.id"), nullable=False)
+    professional_id = Column(PG_UUID(as_uuid=True), ForeignKey("profissionais.id"), nullable=False)
     
     customer_name = Column(String, nullable=False)
     customer_phone = Column(String, nullable=False)
@@ -104,7 +104,7 @@ class Appointment(Base):
     professional = relationship("Professional", back_populates="appointments")
 
 class OTPVerification(Base):
-    __tablename__ = "otp_verifications"
+    __tablename__ = "verificacoes_otp"
 
     phone = Column(String, primary_key=True)
     code = Column(String, nullable=False)

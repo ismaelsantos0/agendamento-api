@@ -199,9 +199,9 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
     
     try:
         await db.execute(text("""
-        CREATE TABLE IF NOT EXISTS professional_clinic_services (
-            professional_id UUID REFERENCES professionals(id),
-            clinic_service_id UUID REFERENCES clinic_services(id),
+        CREATE TABLE IF NOT EXISTS profissionais_servicos_clinica (
+            professional_id UUID REFERENCES profissionais(id),
+            clinic_service_id UUID REFERENCES servicos_clinica(id),
             PRIMARY KEY (professional_id, clinic_service_id)
         )
         """))
@@ -209,19 +209,19 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
         errors.append(str(e))
         
     try:
-        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN clinic_name VARCHAR"))
+        await db.execute(text("ALTER TABLE configuracoes_clinica ADD COLUMN clinic_name VARCHAR"))
     except Exception: pass
     try:
-        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN address VARCHAR"))
+        await db.execute(text("ALTER TABLE configuracoes_clinica ADD COLUMN address VARCHAR"))
     except Exception: pass
     try:
-        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN opening_hours VARCHAR"))
+        await db.execute(text("ALTER TABLE configuracoes_clinica ADD COLUMN opening_hours VARCHAR"))
     except Exception: pass
     try:
-        await db.execute(text("ALTER TABLE clinic_settings ADD COLUMN services VARCHAR"))
+        await db.execute(text("ALTER TABLE configuracoes_clinica ADD COLUMN services VARCHAR"))
     except Exception: pass
     try:
-        await db.execute(text("ALTER TABLE appointments ADD COLUMN service_name VARCHAR"))
+        await db.execute(text("ALTER TABLE agendamentos ADD COLUMN service_name VARCHAR"))
     except Exception: pass
     await db.commit()
     
