@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 import uuid
 
 from app.database import get_db
@@ -79,8 +80,6 @@ async def update_service(
     service.professional_ids = [str(p.id) for p in service.professionals]
     return service
 
-from pydantic import BaseModel
-from typing import Optional, List
 
 class ClinicServiceSync(BaseModel):
     id: Optional[str] = None
