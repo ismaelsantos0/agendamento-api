@@ -58,3 +58,22 @@ async def update_professional(
     await db.commit()
     await db.refresh(prof)
     return prof
+
+@router.delete("/{prof_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_professional(
+    prof_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    result = await db.execute(select(Professional).where(Professional.id == prof_id))
+    prof = result.scalar_one_or_none()
+    if not prof:
+        raise HTTPException(status_code=404, detail="Profissional não encontrado")
+    
+    # Soft delete
+    prof.is_active = False
+    await db.commit()
+    return None
