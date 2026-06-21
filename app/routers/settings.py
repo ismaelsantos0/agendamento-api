@@ -92,6 +92,8 @@ async def update_settings(
         settings.msg_feedback_confirmed = settings_in.msg_feedback_confirmed
     if settings_in.msg_feedback_cancelled is not None:
         settings.msg_feedback_cancelled = settings_in.msg_feedback_cancelled
+    if settings_in.services is not None:
+        settings.services = settings_in.services
         
     await db.commit()
     await db.refresh(settings)
