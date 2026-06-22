@@ -77,3 +77,18 @@ Ao enviar isso pro Github, o Railway nunca mais vai "tentar adivinhar" como liga
 
 ---
 *Dúvidas adicionais? Consulte a documentação oficial do Railway e da Evolution API v2.*
+
+---
+
+## 4. Registro de Atualizações Recentes (Changelog)
+
+### Melhorias no Agendamento Público e Painel
+- **Modo Profissional Solo**: Novo assistente (Onboarding Wizard) para identificar automaticamente se a conta é de uma Clínica ou de um Profissional Solo. 
+- Se for **Solo**, o sistema ajusta a nomenclatura do painel de controle (Oculta abas como "Novo Profissional") e gera links automáticos de atendimento.
+- **Cabeçalho Premium**: O cabeçalho do `AdminDashboard` e do `SchedulingPage` foram redesenhados com um design de luxo (*Glassmorphism*, Iniciais Dinâmicas, Avatares Coloridos).
+- **Caixa de Especialista Inteligente**: Na tela de agendamento público (`SchedulingPage`), se a clínica possui apenas 1 profissional (Solo), a caixa de seleção com a seta flutuante é convertida automaticamente num **"Cartão de Perfil" estático**, evitando que o paciente tente selecionar outras opções inexistentes.
+
+### Correções de Segurança e API
+- **Links Personalizados SaaS**: Adicionada chave global de segurança `allow_custom_links` ao banco de dados `configuracoes_clinica`, permitindo que apenas o usuário `master` autorize a geração de links independentes.
+- **Lockdown Visual**: A visualização de configurações da empresa (CEP, Rua, Nome) para usuários recepcionistas/clínica é estritamente **Somente Leitura**, com as caixas de texto bloqueadas nativamente para impedir edições indevidas.
+- **Liberação Pública de Configurações**: A rota `/settings` agora tem suporte unificado: acessos `GET` desautenticados são permitidos para abastecer a tela de agendamento do paciente, enquanto acessos `PUT` continuam seguros com o Token JWT.
