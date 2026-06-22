@@ -87,6 +87,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS address VARCHAR",
             "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS opening_hours VARCHAR",
             "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS services VARCHAR",
+            "ALTER TABLE configuracoes_clinica ADD COLUMN IF NOT EXISTS allow_custom_links BOOLEAN DEFAULT FALSE",
             "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS service_name VARCHAR",
             "ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS clinical_notes VARCHAR",
             "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS profession VARCHAR",
