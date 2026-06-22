@@ -166,7 +166,7 @@ app.include_router(professionals.router, dependencies=[Depends(get_current_user)
 app.include_router(availability.router, dependencies=[Depends(get_current_user)])
 app.include_router(blockouts.router, dependencies=[Depends(get_current_user)])
 app.include_router(appointments.router, dependencies=[Depends(get_current_user)])
-app.include_router(settings_router.router, dependencies=[Depends(require_master)])
+app.include_router(settings_router.router)
 app.include_router(services.router, dependencies=[Depends(get_current_user)])
 from app.routers import webhooks, whatsapp_management
 app.include_router(webhooks.router)
