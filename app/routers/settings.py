@@ -94,6 +94,8 @@ async def update_settings(
         settings.msg_feedback_cancelled = settings_in.msg_feedback_cancelled
     if settings_in.services is not None:
         settings.services = settings_in.services
+    if settings_in.allow_custom_links is not None:
+        settings.allow_custom_links = settings_in.allow_custom_links
         
     await db.commit()
     await db.refresh(settings)
