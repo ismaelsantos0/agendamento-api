@@ -107,3 +107,74 @@ async def logout_whatsapp_instance(current_user = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/reset")
+async def reset_whatsapp_instance(current_user = Depends(get_current_user)):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+        
+    settings = get_settings()
+    if not settings.evolution_api_url or not settings.evolution_api_key or not settings.evolution_instance:
+        raise HTTPException(status_code=400, detail="Credenciais não configuradas")
+
+    base_url = settings.evolution_api_url.rstrip('/')
+    instance = settings.evolution_instance
+    headers = {"apikey": settings.evolution_api_key, "Content-Type": "application/json"}
+    
+    # 1. Tentar ler o webhook atual para não perder a configuração (suporta v1 e v2)
+    webhook_url = None
+    webhook_events = []
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{base_url}/webhook/find/{instance}", headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    if "webhook" in data and isinstance(data["webhook"], dict):
+                        webhook_url = data["webhook"].get("url")
+                        webhook_events = data["webhook"].get("events", [])
+                    elif "url" in data:
+                        webhook_url = data.get("url")
+                        webhook_events = data.get("events", [])
+    except Exception as e:
+        log.warning(f"Erro ao buscar webhook atual: {e}")
+
+    # 2. Deletar a instância para limpar o cache corrompido
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            await client.delete(f"{base_url}/instance/delete/{instance}", headers=headers)
+    except Exception as e:
+        log.warning(f"Erro ao deletar (pode não existir): {e}")
+
+    # 3. Recriar a instância do zero
+    create_payload = {
+        "instanceName": instance,
+        "qrcode": True,
+        "integration": "WHATSAPP-BAILEYS"
+    }
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(f"{base_url}/instance/create", json=create_payload, headers=headers)
+            if resp.status_code not in [200, 201]:
+                raise HTTPException(status_code=500, detail=f"Erro ao recriar instância: {resp.text}")
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=500, detail=f"Erro HTTP ao recriar: {exc.response.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro de rede ao recriar: {str(e)}")
+
+    # 4. Restaurar o webhook se ele existia
+    if webhook_url:
+        webhook_payload = {
+            "webhook": {
+                "enabled": True,
+                "url": webhook_url,
+                "events": webhook_events or ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"]
+            }
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                await client.post(f"{base_url}/webhook/set/{instance}", json=webhook_payload, headers=headers)
+        except Exception as e:
+            log.warning(f"Erro ao restaurar webhook: {e}")
+
+    return {"success": True, "message": "Instância resetada com sucesso."}
