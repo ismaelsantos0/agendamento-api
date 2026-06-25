@@ -41,8 +41,8 @@ async def create_service(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode gerenciar serviços")
+    if current_user.role not in ["master", "clinica"]:
+        raise HTTPException(status_code=403, detail="Apenas admin ou clínica podem gerenciar serviços")
 
     new_service = ClinicService(
         name=service_in.name,
@@ -70,8 +70,8 @@ async def sync_services(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode gerenciar serviços")
+    if current_user.role not in ["master", "clinica"]:
+        raise HTTPException(status_code=403, detail="Apenas admin ou clínica podem gerenciar serviços")
 
     # Load existing services
     result = await db.execute(select(ClinicService).options(selectinload(ClinicService.professionals)))
@@ -129,8 +129,8 @@ async def update_service(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode gerenciar serviços")
+    if current_user.role not in ["master", "clinica"]:
+        raise HTTPException(status_code=403, detail="Apenas admin ou clínica podem gerenciar serviços")
 
     result = await db.execute(
         select(ClinicService).options(selectinload(ClinicService.professionals))
@@ -165,8 +165,8 @@ async def delete_service(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if current_user.role != "master":
-        raise HTTPException(status_code=403, detail="Apenas admin pode gerenciar serviços")
+    if current_user.role not in ["master", "clinica"]:
+        raise HTTPException(status_code=403, detail="Apenas admin ou clínica podem gerenciar serviços")
 
     result = await db.execute(select(ClinicService).where(ClinicService.id == service_id))
     service = result.scalar_one_or_none()
