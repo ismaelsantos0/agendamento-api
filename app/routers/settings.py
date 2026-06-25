@@ -13,6 +13,7 @@ from app.schemas import (
     ClinicSettingsResponse,
     TestConfirmationMessagePayload,
     TestConfirmationMessageResponse,
+    ResetSystemPayload,
 )
 from app.dependencies import get_current_user
 from app.utils.phone import normalize_phone
