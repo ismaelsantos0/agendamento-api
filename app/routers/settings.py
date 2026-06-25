@@ -106,6 +106,8 @@ async def update_settings(
         settings.primary_color = settings_in.primary_color
     if settings_in.banner_image_url is not None:
         settings.banner_image_url = settings_in.banner_image_url
+    if settings_in.logo_url is not None:
+        settings.logo_url = settings_in.logo_url
     if settings_in.social_instagram is not None:
         settings.social_instagram = settings_in.social_instagram
     if settings_in.social_whatsapp is not None:
