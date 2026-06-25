@@ -96,6 +96,20 @@ async def update_settings(
         settings.services = settings_in.services
     if settings_in.allow_custom_links is not None:
         settings.allow_custom_links = settings_in.allow_custom_links
+    if settings_in.reminder_hours_before is not None:
+        settings.reminder_hours_before = settings_in.reminder_hours_before
+    else:
+        settings.reminder_hours_before = None
+    if settings_in.reminder_message is not None:
+        settings.reminder_message = settings_in.reminder_message
+    if settings_in.primary_color is not None:
+        settings.primary_color = settings_in.primary_color
+    if settings_in.banner_image_url is not None:
+        settings.banner_image_url = settings_in.banner_image_url
+    if settings_in.social_instagram is not None:
+        settings.social_instagram = settings_in.social_instagram
+    if settings_in.social_whatsapp is not None:
+        settings.social_whatsapp = settings_in.social_whatsapp
         
     await db.commit()
     await db.refresh(settings)

@@ -83,6 +83,14 @@ class ClinicSettings(Base):
     msg_feedback_cancelled = Column(String, nullable=True)
     services = Column(String, nullable=True)
     allow_custom_links = Column(Boolean, default=False)
+    # Lembretes automáticos
+    reminder_hours_before = Column(Integer, nullable=True)  # None = desativado, ex: 2 ou 24
+    reminder_message = Column(String, nullable=True)
+    # Customização da página pública
+    primary_color = Column(String, nullable=True)  # ex: '#007bff'
+    banner_image_url = Column(String, nullable=True)
+    social_instagram = Column(String, nullable=True)
+    social_whatsapp = Column(String, nullable=True)
 
 
 class Blockout(Base):
@@ -112,6 +120,7 @@ class Appointment(Base):
     notes = Column(String, nullable=True)
     service_name = Column(String, nullable=True)
     clinical_notes = Column(String, nullable=True)
+    reminder_sent = Column(Boolean, default=False)
 
     professional = relationship("Professional", back_populates="appointments")
 

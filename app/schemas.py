@@ -144,6 +144,14 @@ class ClinicSettingsUpdate(BaseModel):
     msg_feedback_cancelled: Optional[str] = None
     services: Optional[str] = None
     allow_custom_links: Optional[bool] = None
+    # Lembretes automáticos
+    reminder_hours_before: Optional[int] = None
+    reminder_message: Optional[str] = None
+    # Customização visual
+    primary_color: Optional[str] = None
+    banner_image_url: Optional[str] = None
+    social_instagram: Optional[str] = None
+    social_whatsapp: Optional[str] = None
 
 class ClinicSettingsResponse(ClinicSettingsUpdate):
     id: str
