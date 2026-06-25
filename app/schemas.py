@@ -150,6 +150,7 @@ class ClinicSettingsUpdate(BaseModel):
     # Customização visual
     primary_color: Optional[str] = None
     banner_image_url: Optional[str] = None
+    logo_url: Optional[str] = None
     social_instagram: Optional[str] = None
     social_whatsapp: Optional[str] = None
 

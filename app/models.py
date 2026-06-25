@@ -89,6 +89,7 @@ class ClinicSettings(Base):
     # Customização da página pública
     primary_color = Column(String, nullable=True)  # ex: '#007bff'
     banner_image_url = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
     social_instagram = Column(String, nullable=True)
     social_whatsapp = Column(String, nullable=True)
 
