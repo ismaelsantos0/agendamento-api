@@ -137,9 +137,9 @@ async def disparar_lembretes():
                         .replace("{maps_link}", maps_parte)
                     )
 
-                    # Se for lembrete de 1 dia, não inclui maps_link na variável {maps_link} mas sim no final
-                    if "{maps_link}" not in template and maps_link and horas > 2:
-                        mensagem += maps_link
+                    # Se a tag não foi usada explicitamente na mensagem, mas o aviso é de 2h ou menos, anexa no final automaticamente
+                    if "{maps_link}" not in template and maps_link and horas <= 2:
+                        mensagem += f"\n\n{maps_link}"
 
                     sucesso, erro = await enviar_mensagem(appt.customer_phone, mensagem)
 
