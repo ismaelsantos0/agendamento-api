@@ -248,3 +248,52 @@ async def upgrade_db(db: AsyncSession = Depends(get_db)):
     if errors:
         return {"status": "error", "errors": errors, "version": "new_raw_sql"}
     return {"status": "ok", "version": "new_raw_sql"}
+
+@router.post("/reset", status_code=status.HTTP_200_OK)
+async def reset_system(
+    payload: ResetSystemPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != "master":
+        raise HTTPException(status_code=403, detail="Apenas admin master pode resetar o sistema.")
+    
+    from sqlalchemy import delete
+    from app.models import Appointment, Blockout, AvailabilityRule, Professional, ClinicService, User, ClinicSettings
+    from app.schemas import ResetSystemPayload
+
+    try:
+        if payload.reset_appointments:
+            await db.execute(delete(Appointment))
+            
+        if payload.reset_services:
+            from app.models import professional_clinic_services
+            await db.execute(delete(professional_clinic_services))
+            await db.execute(delete(ClinicService))
+            
+        if payload.reset_professionals:
+            # We must delete blockouts and availability rules first if we don't have cascade
+            await db.execute(delete(Blockout))
+            await db.execute(delete(AvailabilityRule))
+            # Delete appointments before deleting professionals just in case reset_appointments wasn't true
+            # but if they want to reset professionals, their appointments must go too to avoid FK constraints
+            await db.execute(delete(Appointment)) 
+            # Nullify professional_id in users
+            from sqlalchemy import update
+            await db.execute(update(User).values(professional_id=None))
+            # Finally delete professionals
+            await db.execute(delete(Professional))
+            
+        if payload.reset_users:
+            await db.execute(delete(User).where(User.role != 'master'))
+            
+        if payload.reset_settings:
+            await db.execute(delete(ClinicSettings))
+            # Will be recreated on next get
+            
+        await db.commit()
+        return {"status": "success", "message": "Dados deletados com sucesso."}
+    except Exception as exc:
+        await db.rollback()
+        log.error(f"[Reset] Erro ao limpar sistema: {exc}")
+        raise HTTPException(status_code=500, detail=f"Erro ao limpar banco de dados: {str(exc)}")

@@ -188,3 +188,10 @@ class PatientResponse(BaseModel):
     name: str
     phone: str
     last_visit: Optional[datetime] = None
+
+class ResetSystemPayload(BaseModel):
+    reset_appointments: bool = False
+    reset_professionals: bool = False
+    reset_services: bool = False
+    reset_users: bool = False
+    reset_settings: bool = False
