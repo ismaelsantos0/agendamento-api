@@ -176,9 +176,10 @@ app.include_router(blockouts.router, dependencies=[Depends(get_current_user)])
 app.include_router(appointments.router, dependencies=[Depends(get_current_user)])
 app.include_router(settings_router.router)
 app.include_router(services.router, dependencies=[Depends(get_current_user)])
-from app.routers import webhooks, whatsapp_management
+from app.routers import webhooks, whatsapp_management, dashboard
 app.include_router(webhooks.router)
 app.include_router(whatsapp_management.router, dependencies=[Depends(require_master)])
+app.include_router(dashboard.router, dependencies=[Depends(get_current_user)])
 
 @app.get("/health", tags=["Sistema"])
 async def health_check():
